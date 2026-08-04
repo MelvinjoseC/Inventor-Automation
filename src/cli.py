@@ -2,7 +2,7 @@ import argparse
 import sys
 import logging
 from pathlib import Path
-from typing import List
+from typing import Any, List
 
 # Setup path to import local modules
 sys.path.append(str(Path(__file__).resolve().parent))

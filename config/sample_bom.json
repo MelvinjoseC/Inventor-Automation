@@ -1,0 +1,29 @@
+[
+  {
+    "part_number": "BM-001",
+    "name": "Base Plate",
+    "width": 10.0,
+    "height": 8.0,
+    "thickness": 0.8,
+    "material": "Steel, Mild",
+    "color": "Polished"
+  },
+  {
+    "part_number": "BM-002",
+    "name": "Side Wall Left",
+    "width": 5.0,
+    "height": 8.0,
+    "thickness": 0.5,
+    "material": "Aluminum 6061",
+    "color": "Blue"
+  },
+  {
+    "part_number": "BM-003",
+    "name": "Side Wall Right",
+    "width": 5.0,
+    "height": 8.0,
+    "thickness": 0.5,
+    "material": "Aluminum 6061",
+    "color": "Blue"
+  }
+]

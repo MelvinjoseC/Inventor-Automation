@@ -1,0 +1,29 @@
+{
+  "inventor": {
+    "visible": true,
+    "silent_mode": false,
+    "application_name": "Inventor.Application"
+  },
+  "paths": {
+    "output_dir": "~/Desktop/InventorAutomation/output",
+    "drawings_dir": "~/Desktop/InventorAutomation/drawings",
+    "exports_dir": "~/Desktop/InventorAutomation/exports",
+    "logs_dir": "logs"
+  },
+  "drawings": {
+    "sheet_size": "A3",
+    "title_block": "ISO",
+    "standard_views": ["Front", "Top", "Isometric"],
+    "view_scale": 1.0
+  },
+  "default_part": {
+    "width": 2.0,
+    "height": 1.0,
+    "thickness": 0.5,
+    "material": "Steel, Mild",
+    "color": "Default"
+  },
+  "bom": {
+    "default_bom_file": "config/sample_bom.json"
+  }
+}

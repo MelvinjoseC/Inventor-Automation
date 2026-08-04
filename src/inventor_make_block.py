@@ -1,100 +1,67 @@
-# src/inventor_make_block.py
+import sys
 from pathlib import Path
-from win32com.client import gencache, CastTo, constants
 
-PROGID = "Inventor.Application"
+# Add root directory to path to enable importing core modules
+sys.path.append(str(Path(__file__).resolve().parents[1]))
 
-def get_inventor():
-    try:
-        inv = gencache.EnsureDispatch(PROGID)  # loads type lib (gives constants + typed interfaces)
-    except Exception:
-        inv = gencache.EnsureDispatch(PROGID)
-    inv.Visible = True
-    return inv
-
-def new_part(inv):
-    kPartDoc = 12290  # DocumentTypeEnum.kPartDocumentObject
-    template = inv.FileManager.GetTemplateFile(kPartDoc)
-    doc = inv.Documents.Add(kPartDoc, template, True)
-    # Cast to PartDocument so .ComponentDefinition exists
-    return CastTo(doc, "PartDocument")
-
-def make_block(part_doc, width_cm=2.0, height_cm=1.0, thickness_cm=0.5):
-    app = part_doc.Parent
-    cd = part_doc.ComponentDefinition
-    tg = app.TransientGeometry
-
-    # Sketch on XY plane
-    xy = cd.WorkPlanes.Item(3)
-    sk = cd.Sketches.Add(xy)
-
-    p1 = tg.CreatePoint2d(0, 0)
-    p2 = tg.CreatePoint2d(width_cm, height_cm)  # geometry units = cm
-    sk.SketchLines.AddAsTwoPointRectangle(p1, p2)
-
-    # Profile
-    prof = sk.Profiles.AddForSolid()
-
-    # Extrude
-    extrudes = cd.Features.ExtrudeFeatures
-    ext_def = extrudes.CreateExtrudeDefinition(prof, constants.kJoinOperation)
-    ext_def.SetDistanceExtent(thickness_cm, constants.kPositiveExtentDirection)
-    extrudes.Add(ext_def)
-
-    return sk
-
-def save_part(part_doc, path: Path):
-    target = path.expanduser().resolve()
-    target.parent.mkdir(parents=True, exist_ok=True)
-    if target.exists():
-        target.unlink()
-    part_doc.SaveAs(str(target), True)
-
-def export_part_as_dwg(inv, part_doc, path: Path):
-    target = path.expanduser().resolve()
-    target.parent.mkdir(parents=True, exist_ok=True)
-    if target.exists():
-        target.unlink()
-
-    cls_id = "{C24E3AC2-122E-11D5-8E91-0010B541CD80}"  # Translator: DWG
-    translator = inv.ApplicationAddIns.ItemById(cls_id)
-    if not translator.Activated:
-        translator.Activate()
-    translator = CastTo(translator, "TranslatorAddIn")
-
-    context = inv.TransientObjects.CreateTranslationContext()
-    try:
-        context.Type = constants.kFileBrowseIOMechanism
-    except AttributeError:
-        # Fallback for Inventor versions without the constant
-        context.Type = 1
-
-    options = inv.TransientObjects.CreateNameValueMap()
-    data_medium = inv.TransientObjects.CreateDataMedium()
-    data_medium.FileName = str(target)
-
-    try:
-        if translator.HasSaveCopyAsOptions(part_doc, context, options):
-            pass
-    except Exception:
-        # Some Inventor versions raise if options are not supported; ignore.
-        options = inv.TransientObjects.CreateNameValueMap()
-    translator.SaveCopyAs(part_doc, context, options, data_medium)
+from src.core.connection import InventorConnectionManager
+from src.core.drawing_generator import DrawingGenerator
+from src.core.exporter import InventorExporter
+from src.automation import InventorAutomationEngine
 
 def main():
-    inv = get_inventor()
-
-    part = new_part(inv)
-    make_block(part, 2.0, 1.0, 5.5)  # 20x10x55 mm (thickness passed in cm)
-
-    part_out = Path.home() / "Desktop" / "Block.ipt"
-    save_part(part, part_out)
-
-    dwg_out = Path.home() / "Desktop" / "OutputbyMcj.dwg"
-    export_part_as_dwg(inv, part, dwg_out)
-
-    print(f"Created part: {part_out}")
-    print(f"Exported DWG: {dwg_out}")
+    print("Starting legacy block generator (refactored integration)...")
+    
+    # Establish connection
+    conn = InventorConnectionManager(visible=True, silent_mode=False)
+    
+    try:
+        with conn as app:
+            # Instantiate modular engines
+            engine = InventorAutomationEngine(app)
+            drawing_gen = DrawingGenerator(app, {"sheet_size": "A3", "view_scale": 1.0})
+            exporter = InventorExporter(app)
+            
+            # 1. Create a new part document
+            part_doc = engine.new_part_document()
+            
+            # 2. Model the block geometry: 20x10x55 mm (or 2.0 x 1.0 x 5.5 cm)
+            engine.create_block(
+                part_doc=part_doc, 
+                width_cm=2.0, 
+                height_cm=1.0, 
+                thickness_cm=5.5,
+                material="Steel, Mild",
+                color="Polished"
+            )
+            
+            # 3. Save part file (.ipt) to Desktop
+            desktop_path = Path.home() / "Desktop"
+            part_out = desktop_path / "Block.ipt"
+            engine.save_document(part_doc, part_out)
+            
+            # 4. Generate drawing sheet for the part
+            drawing_doc = drawing_gen.create_drawing(part_doc, "BM-BLOCK", "Auto-Generated Block Part")
+            
+            # 5. Export drawing to DWG
+            dwg_out = desktop_path / "OutputbyMcj.dwg"
+            engine.save_document(drawing_doc, dwg_out)
+            
+            # 6. Export drawing to PDF (new capability added by refactor!)
+            pdf_out = desktop_path / "OutputbyMcj.pdf"
+            exporter.export_pdf(drawing_doc, pdf_out)
+            
+            # Clean up documents
+            engine.close_document(drawing_doc)
+            engine.close_document(part_doc)
+            
+            print(f"✅ Success! Created part: {part_out}")
+            print(f"✅ Success! Exported DWG: {dwg_out}")
+            print(f"✅ Success! Exported PDF: {pdf_out}")
+            
+    except Exception as e:
+        print(f"❌ Error occurred during automation script execution: {e}")
+        sys.exit(1)
 
 if __name__ == "__main__":
     main()

@@ -1,21 +1,28 @@
-import win32com.client as win32
+import os
+import sys
+from pathlib import Path
 
-PROGID = "Inventor.Application"
+# Add root directory to path to enable importing core modules
+sys.path.append(str(Path(__file__).resolve().parents[1]))
 
-def get_inventor():
-    try:
-        inv = win32.GetObject(Class=PROGID)
-        print("✅ Attached to running Inventor")
-    except Exception:
-        inv = win32.Dispatch(PROGID)
-        inv.Visible = True
-        print("🚀 Started a new Inventor session")
-    return inv
+from src.core.connection import InventorConnectionManager
 
 def main():
-    inv = get_inventor()
-    inv.Visible = True
-    print("Inventor Version:", inv.SoftwareVersion.DisplayVersion)
+    print("Initializing environment connection...")
+    
+    # Instance connection manager
+    conn = InventorConnectionManager(visible=True, silent_mode=False)
+    
+    try:
+        # Connect to Inventor application
+        app = conn.connect()
+        print("✅ Success!")
+        print("Inventor Version Display:", app.SoftwareVersion.DisplayVersion)
+    except Exception as e:
+        print(f"❌ Failed to attach/start Inventor instance: {e}")
+        sys.exit(1)
+    finally:
+        conn.disconnect()
 
 if __name__ == "__main__":
     main()

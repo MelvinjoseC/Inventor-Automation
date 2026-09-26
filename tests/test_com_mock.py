@@ -196,3 +196,63 @@ def test_exporter_pdf_dwg(mock_inventor_app, tmp_path):
         
         # Verify translator saved copies
         assert translator.SaveCopyAs.call_count == 2
+
+def test_cylinder_primitive(mock_inventor_app):
+    part_doc = MagicMock()
+    cd = part_doc.ComponentDefinition
+    sketch = MagicMock()
+    cd.Sketches.Add.return_value = sketch
+    profile = MagicMock()
+    sketch.Profiles.AddForSolid.return_value = profile
+    ext_feature = MagicMock()
+    cd.Features.ExtrudeFeatures.Add.return_value = ext_feature
+    
+    engine = InventorAutomationEngine(mock_inventor_app)
+    res = engine.create_cylinder(part_doc, diameter_cm=4.0, length_cm=10.0)
+    
+    sketch.SketchCircles.AddByCenterRadius.assert_called_once()
+    cd.Features.ExtrudeFeatures.CreateExtrudeDefinition.assert_called_once_with(profile, 20481)
+    assert res == ext_feature
+
+def test_plate_with_holes_primitive(mock_inventor_app):
+    part_doc = MagicMock()
+    cd = part_doc.ComponentDefinition
+    sketch = MagicMock()
+    cd.Sketches.Add.return_value = sketch
+    profile = MagicMock()
+    sketch.Profiles.AddForSolid.return_value = profile
+    ext_feature = MagicMock()
+    cd.Features.ExtrudeFeatures.Add.return_value = ext_feature
+    
+    engine = InventorAutomationEngine(mock_inventor_app)
+    res = engine.create_plate_with_holes(
+        part_doc, width_cm=10.0, height_cm=8.0, thickness_cm=1.0,
+        hole_diameter_cm=1.0, corner_holes=True, center_hole=True
+    )
+    
+    sketch.SketchLines.AddAsTwoPointRectangle.assert_called_once()
+    # 4 corner holes + 1 center hole = 5 circles
+    assert sketch.SketchCircles.AddByCenterRadius.call_count == 5
+    assert res == ext_feature
+
+def test_tube_primitive(mock_inventor_app):
+    part_doc = MagicMock()
+    cd = part_doc.ComponentDefinition
+    sketch = MagicMock()
+    cd.Sketches.Add.return_value = sketch
+    profile = MagicMock()
+    sketch.Profiles.AddForSolid.return_value = profile
+    ext_feature = MagicMock()
+    cd.Features.ExtrudeFeatures.Add.return_value = ext_feature
+    
+    engine = InventorAutomationEngine(mock_inventor_app)
+    res = engine.create_tube(part_doc, outer_diameter_cm=6.0, inner_diameter_cm=4.0, length_cm=12.0)
+    
+    # 2 concentric circles
+    assert sketch.SketchCircles.AddByCenterRadius.call_count == 2
+    assert res == ext_feature
+    
+    # Validation error if ID >= OD
+    with pytest.raises(ValueError):
+        engine.create_tube(part_doc, outer_diameter_cm=4.0, inner_diameter_cm=6.0, length_cm=10.0)
+

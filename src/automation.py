@@ -103,6 +103,173 @@ class InventorAutomationEngine:
             logger.error(f"Failed to generate block geometry: {e}")
             raise
 
+    def create_cylinder(
+        self,
+        part_doc: Any,
+        diameter_cm: float,
+        length_cm: float,
+        material: Optional[str] = None,
+        color: Optional[str] = None,
+    ) -> Any:
+        """Generates a cylindrical solid feature along the Z axis from the XY work plane."""
+        try:
+            logger.info(f"Generating cylinder: Diameter={diameter_cm}cm, Length={length_cm}cm")
+            cd = part_doc.ComponentDefinition
+            xy_plane = cd.WorkPlanes.Item(3)
+            sketch = cd.Sketches.Add(xy_plane)
+
+            # Draw circle centered at origin (0, 0)
+            center = self.tg.CreatePoint2d(0, 0)
+            radius = diameter_cm / 2.0
+            sketch.SketchCircles.AddByCenterRadius(center, radius)
+
+            profile = sketch.Profiles.AddForSolid()
+            extrudes = cd.Features.ExtrudeFeatures
+
+            try:
+                join_op = constants.kJoinOperation
+                pos_dir = constants.kPositiveExtentDirection
+            except AttributeError:
+                join_op = 20481
+                pos_dir = 20993
+
+            ext_def = extrudes.CreateExtrudeDefinition(profile, join_op)
+            ext_def.SetDistanceExtent(length_cm, pos_dir)
+            extrusion = extrudes.Add(ext_def)
+
+            if material:
+                self.apply_material(part_doc, material)
+            if color:
+                self.apply_color(part_doc, color)
+
+            logger.info("Cylinder feature created successfully.")
+            return extrusion
+        except Exception as e:
+            logger.error(f"Failed to generate cylinder geometry: {e}")
+            raise
+
+    def create_plate_with_holes(
+        self,
+        part_doc: Any,
+        width_cm: float,
+        height_cm: float,
+        thickness_cm: float,
+        hole_diameter_cm: float,
+        hole_margin_x_cm: Optional[float] = None,
+        hole_margin_y_cm: Optional[float] = None,
+        corner_holes: bool = True,
+        center_hole: bool = False,
+        material: Optional[str] = None,
+        color: Optional[str] = None,
+    ) -> Any:
+        """Generates a mounting plate with optional corner bolt holes and center pilot hole."""
+        try:
+            logger.info(
+                f"Generating plate with holes: {width_cm}x{height_cm}x{thickness_cm}cm, "
+                f"Hole Dia={hole_diameter_cm}cm"
+            )
+            cd = part_doc.ComponentDefinition
+            xy_plane = cd.WorkPlanes.Item(3)
+            sketch = cd.Sketches.Add(xy_plane)
+
+            # Base rectangular boundary
+            p1 = self.tg.CreatePoint2d(0, 0)
+            p2 = self.tg.CreatePoint2d(width_cm, height_cm)
+            sketch.SketchLines.AddAsTwoPointRectangle(p1, p2)
+
+            hole_radius = hole_diameter_cm / 2.0
+            margin_x = hole_margin_x_cm if hole_margin_x_cm is not None else min(width_cm * 0.15, 1.0)
+            margin_y = hole_margin_y_cm if hole_margin_y_cm is not None else min(height_cm * 0.15, 1.0)
+
+            if corner_holes:
+                corner_centers = [
+                    (margin_x, margin_y),
+                    (width_cm - margin_x, margin_y),
+                    (width_cm - margin_x, height_cm - margin_y),
+                    (margin_x, height_cm - margin_y),
+                ]
+                for cx, cy in corner_centers:
+                    sketch.SketchCircles.AddByCenterRadius(self.tg.CreatePoint2d(cx, cy), hole_radius)
+
+            if center_hole:
+                sketch.SketchCircles.AddByCenterRadius(
+                    self.tg.CreatePoint2d(width_cm / 2.0, height_cm / 2.0),
+                    hole_radius * 1.5,
+                )
+
+            profile = sketch.Profiles.AddForSolid()
+            extrudes = cd.Features.ExtrudeFeatures
+
+            try:
+                join_op = constants.kJoinOperation
+                pos_dir = constants.kPositiveExtentDirection
+            except AttributeError:
+                join_op = 20481
+                pos_dir = 20993
+
+            ext_def = extrudes.CreateExtrudeDefinition(profile, join_op)
+            ext_def.SetDistanceExtent(thickness_cm, pos_dir)
+            extrusion = extrudes.Add(ext_def)
+
+            if material:
+                self.apply_material(part_doc, material)
+            if color:
+                self.apply_color(part_doc, color)
+
+            logger.info("Plate with holes feature created successfully.")
+            return extrusion
+        except Exception as e:
+            logger.error(f"Failed to generate plate with holes: {e}")
+            raise
+
+    def create_tube(
+        self,
+        part_doc: Any,
+        outer_diameter_cm: float,
+        inner_diameter_cm: float,
+        length_cm: float,
+        material: Optional[str] = None,
+        color: Optional[str] = None,
+    ) -> Any:
+        """Generates a hollow cylindrical tube / pipe feature."""
+        if inner_diameter_cm >= outer_diameter_cm:
+            raise ValueError(f"Inner diameter ({inner_diameter_cm}) must be smaller than outer ({outer_diameter_cm})")
+
+        try:
+            logger.info(f"Generating tube: OD={outer_diameter_cm}cm, ID={inner_diameter_cm}cm, Length={length_cm}cm")
+            cd = part_doc.ComponentDefinition
+            xy_plane = cd.WorkPlanes.Item(3)
+            sketch = cd.Sketches.Add(xy_plane)
+
+            center = self.tg.CreatePoint2d(0, 0)
+            sketch.SketchCircles.AddByCenterRadius(center, outer_diameter_cm / 2.0)
+            sketch.SketchCircles.AddByCenterRadius(center, inner_diameter_cm / 2.0)
+
+            profile = sketch.Profiles.AddForSolid()
+            extrudes = cd.Features.ExtrudeFeatures
+
+            try:
+                join_op = constants.kJoinOperation
+                pos_dir = constants.kPositiveExtentDirection
+            except AttributeError:
+                join_op = 20481
+                pos_dir = 20993
+
+            ext_def = extrudes.CreateExtrudeDefinition(profile, join_op)
+            ext_def.SetDistanceExtent(length_cm, pos_dir)
+            extrusion = extrudes.Add(ext_def)
+
+            if material:
+                self.apply_material(part_doc, material)
+            if color:
+                self.apply_color(part_doc, color)
+
+            logger.info("Tube feature created successfully.")
+            return extrusion
+        except Exception as e:
+            logger.error(f"Failed to generate tube: {e}")
+            raise
+
     def apply_material(self, part_doc: Any, material_name: str) -> None:
         """Applies a material to the part document."""
         try:

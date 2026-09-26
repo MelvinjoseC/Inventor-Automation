@@ -50,6 +50,55 @@ def test_connection_manager_success(mock_inventor_app):
         assert app == mock_inventor_app
         assert conn.is_connected() is True
 
+def test_transaction_context_commit_and_abort(mock_inventor_app):
+    from src.core.connection import TransactionContext, PerformanceMode, COMErrorHelper
+    
+    doc = MagicMock()
+    mock_trans = MagicMock()
+    mock_inventor_app.TransactionManager.StartTransaction.return_value = mock_trans
+    
+    # Test commit on success
+    with TransactionContext(mock_inventor_app, doc, "TestOp"):
+        pass
+    mock_trans.End.assert_called_once()
+    mock_trans.Abort.assert_not_called()
+    
+    # Test abort on exception
+    mock_trans.reset_mock()
+    with pytest.raises(RuntimeError):
+        with TransactionContext(mock_inventor_app, doc, "FailingOp"):
+            raise RuntimeError("Failure inside transaction")
+    mock_trans.Abort.assert_called_once()
+    mock_trans.End.assert_not_called()
+
+def test_performance_mode(mock_inventor_app):
+    from src.core.connection import PerformanceMode
+    mock_inventor_app.ScreenUpdating = True
+    mock_inventor_app.SilentOnSelectSet = False
+    
+    with PerformanceMode(mock_inventor_app, enable_turbo=True):
+        assert mock_inventor_app.ScreenUpdating is False
+        assert mock_inventor_app.SilentOnSelectSet is True
+        
+    assert mock_inventor_app.ScreenUpdating is True
+    assert mock_inventor_app.SilentOnSelectSet is False
+
+def test_com_error_helper():
+    from src.core.connection import COMErrorHelper
+    # Test standard exception
+    err = ValueError("Standard error")
+    assert "Standard error" in COMErrorHelper.format_error(err)
+    
+    # Test COM-like tuple exception
+    class MockCOMException(Exception):
+        def __init__(self):
+            super().__init__(-2147467259, "Unspecified error", (0, "Inventor.Server", "Geometry self-intersects", None, 0, -2147467259), None)
+            
+    com_err = MockCOMException()
+    formatted = COMErrorHelper.format_error(com_err)
+    assert "Geometry self-intersects" in formatted
+    assert "Inventor.Server" in formatted
+
 def test_automation_engine_part_creation(mock_inventor_app):
     # Patch CastTo to bypass win32com casting mechanics during mock testing
     with patch("src.automation.CastTo", lambda doc, interface: doc):

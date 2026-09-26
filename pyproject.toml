@@ -4,23 +4,24 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "inventor-automation"
-version = "1.0.0"
-description = "Autodesk Inventor automation engine for model creation, drawings layouts, and batch BOM workflows."
+version = "2.0.0"
+description = "Autodesk Inventor enterprise automation engine for parametric modeling, assembly constraints, drawing sheets, DRC inspection, and multi-format exports."
 readme = "README.md"
 requires-python = ">=3.8"
 license = { text = "MIT" }
 authors = [
-    { name = "DevOps Engineer", email = "devops@example.com" }
+    { name = "DevOps & CAD Automation Engineering Team", email = "devops@example.com" }
 ]
 classifiers = [
     "Programming Language :: Python :: 3",
     "Operating System :: Microsoft :: Windows",
     "Topic :: Scientific/Engineering",
+    "Topic :: Software Development :: Build Tools",
 ]
 
 [tool.black]
 line-length = 100
-target-version = ['py38']
+target-version = ['py38', 'py39', 'py310', 'py311', 'py312']
 exclude = '''
 /(
     \.git
@@ -39,3 +40,17 @@ testpaths = [
 ]
 python_files = ["test_*.py"]
 pythonpath = ["."]
+
+[tool.coverage.run]
+source = ["src"]
+omit = ["tests/*"]
+
+[tool.coverage.report]
+exclude_lines = [
+    "pragma: no cover",
+    "def __repr__",
+    "raise NotImplementedError",
+    "if __name__ == .__main__.:",
+    "pass",
+    "except ImportError:",
+]

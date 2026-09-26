@@ -1,4 +1,4 @@
-name: Inventor Automation CI
+name: Inventor Automation CI/CD Pipeline
 
 on:
   push:
@@ -7,14 +7,14 @@ on:
     branches: [ main ]
 
 jobs:
-  lint-and-test:
+  lint:
+    name: Code Quality & Formatting
     runs-on: windows-latest
-
     steps:
     - name: Checkout repository
       uses: actions/checkout@v4
 
-    - name: Set up Python
+    - name: Set up Python 3.11
       uses: actions/setup-python@v5
       with:
         python-version: '3.11'
@@ -25,17 +25,44 @@ jobs:
         python -m pip install --upgrade pip
         pip install -r requirements.txt
 
-    - name: Lint with black
+    - name: Check code formatting with Black
       run: |
         black --check --line-length=100 src/ tests/
 
-    - name: Lint with flake8
+    - name: Lint with Flake8
       run: |
-        # stop the build if there are Python syntax errors or undefined names
-        flake8 src/ tests/ --count --select=E9,F63,F7,F82 --show-source --statistics
-        # exit-zero treats all errors as warnings.
-        flake8 src/ tests/ --count --exit-zero --max-complexity=10 --max-line-length=100 --statistics
+        flake8 src/ tests/ --count --max-line-length=120 --statistics
 
-    - name: Run mock test suite with pytest
+  test:
+    name: Mock COM Test Suite
+    runs-on: windows-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ['3.9', '3.10', '3.11', '3.12']
+
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+
+    - name: Set up Python ${{ matrix.python-version }}
+      uses: actions/setup-python@v5
+      with:
+        python-version: ${{ matrix.python-version }}
+        cache: 'pip'
+
+    - name: Install dependencies
       run: |
-        pytest -v
+        python -m pip install --upgrade pip
+        pip install -r requirements.txt
+
+    - name: Run test suite with pytest & coverage
+      run: |
+        pytest -v --cov=src --cov-report=xml --cov-report=term
+
+    - name: Upload coverage artifact
+      if: matrix.python-version == '3.11'
+      uses: actions/upload-artifact@v4
+      with:
+        name: coverage-report
+        path: coverage.xml

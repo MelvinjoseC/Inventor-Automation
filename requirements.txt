@@ -2,10 +2,12 @@
 # Windows COM interface mapping libraries (only on Windows platform)
 pywin32>=306; sys_platform == "win32"
 
-# Test libraries
+# Test & Coverage libraries
 pytest>=8.0.0
 pytest-mock>=3.12.0
+pytest-cov>=5.0.0
 
 # Code Quality & Formatters
 black>=24.0.0
 flake8>=7.0.0
+pre-commit>=3.7.0

@@ -70,6 +70,57 @@ class DrawingGenerator:
             logger.error(f"Failed to generate drawing: {e}")
             raise
 
+    def create_assembly_drawing(
+        self,
+        assembly_doc: Any,
+        assembly_number: str,
+        assembly_name: str,
+        revision: str = "A",
+        include_parts_list: bool = True,
+    ) -> Any:
+        """Creates an assembly drawing sheet with orthographic views, isometric view, and automatic Parts List."""
+        try:
+            logger.info(f"Generating assembly drawing for {assembly_number} ({assembly_name})...")
+            self._update_part_properties(assembly_doc, assembly_number, assembly_name, revision)
+
+            template_path = self.app.FileManager.GetTemplateFile(self.kDrawingDocumentObject)
+            doc = self.app.Documents.Add(self.kDrawingDocumentObject, template_path, True)
+            try:
+                drawing_doc = CastTo(doc, "DrawingDocument")
+            except Exception:
+                drawing_doc = doc
+
+            sheet = drawing_doc.Sheets.Item(1)
+            self._configure_sheet_size(sheet)
+
+            # Place assembly views
+            base_view = self._place_views(sheet, assembly_doc)
+
+            # Insert Parts List (Drawing BOM Table)
+            if include_parts_list and base_view:
+                self._add_parts_list(sheet, base_view)
+
+            logger.info(f"Successfully generated assembly drawing for {assembly_number}")
+            return drawing_doc
+        except Exception as e:
+            logger.error(f"Failed to generate assembly drawing: {e}")
+            raise
+
+    def _add_parts_list(self, sheet: Any, base_view: Any) -> Optional[Any]:
+        """Inserts a structured Parts List table onto the top-right corner of the drawing sheet."""
+        try:
+            w = float(sheet.Width)
+            h = float(sheet.Height)
+            # Position at top-right corner with 2cm margin
+            pos = self.tg.CreatePoint2d(w - 14.0, h - 2.0)
+            parts_lists = sheet.PartsLists
+            parts_list = parts_lists.Add(base_view, pos)
+            logger.info("Structured Parts List inserted on drawing sheet.")
+            return parts_list
+        except Exception as e:
+            logger.warning(f"Could not automatically place Parts List: {e}")
+            return None
+
     def _update_part_properties(
         self,
         part_doc: Any,

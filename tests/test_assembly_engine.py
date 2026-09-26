@@ -91,3 +91,29 @@ def test_assembly_bom_summary():
     part_b = next(item for item in summary if item["part_number"] == "PART-B")
     assert part_a["quantity"] == 2
     assert part_b["quantity"] == 1
+
+
+def test_assembly_drawing_generation():
+    from src.core.drawing_generator import DrawingGenerator
+    
+    app = MagicMock()
+    assembly_doc = MagicMock()
+    drawing_doc = MagicMock()
+    sheet = MagicMock()
+    sheet.Width = 42.0
+    sheet.Height = 29.7
+    drawing_doc.Sheets.Item.return_value = sheet
+    app.Documents.Add.return_value = drawing_doc
+    
+    gen = DrawingGenerator(app, {"sheet_size": "A3", "view_scale": 1.0})
+    with patch("src.core.drawing_generator.CastTo", lambda doc, iface: doc):
+        doc = gen.create_assembly_drawing(
+            assembly_doc,
+            assembly_number="ASM-100",
+            assembly_name="Pivoting Clamp Assembly",
+            include_parts_list=True
+        )
+        assert doc == drawing_doc
+        sheet.DrawingViews.AddBaseView.assert_called()
+        sheet.PartsLists.Add.assert_called_once()
+

@@ -56,3 +56,19 @@ def test_get_path_resolution(tmp_path):
     logs_path = loader.get_path("paths.logs_dir")
     assert logs_path.is_absolute()
     assert logs_path.name == "custom_logs"
+
+def test_unit_conversion():
+    assert ConfigLoader.to_cm(100.0, "mm") == 10.0
+    assert ConfigLoader.to_cm(1.0, "in") == 2.54
+    assert ConfigLoader.to_cm(2.5, "cm") == 2.5
+    assert ConfigLoader.to_cm(1.0, "m") == 100.0
+    with pytest.raises(ValueError):
+        ConfigLoader.to_cm(10.0, "invalid_unit")
+
+def test_environment_variable_overrides(monkeypatch, tmp_path):
+    monkeypatch.setenv("INVENTOR_VISIBLE", "false")
+    monkeypatch.setenv("INVENTOR_SHEET_SIZE", "A4")
+    loader = ConfigLoader(config_path=str(tmp_path / "nonexistent.json"))
+    assert loader.inventor_settings["visible"] is False
+    assert loader.drawing_settings["sheet_size"] == "A4"
+    assert loader.get("inventor.visible") is False

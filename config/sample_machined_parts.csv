@@ -1,0 +1,5 @@
+part_number, name, part_type, width, height, thickness, diameter, length, outer_diameter, inner_diameter, hole_diameter, fillet_radius, chamfer_distance, unit, material, color, revision
+MCH-001, Structural Bracket, plate_with_holes, 120.0, 80.0, 10.0, , , , , 8.0, 4.0, , mm, Steel Mild, Default, A
+MCH-002, Motor Pivot Pin, cylinder, , , , 30.0, 100.0, , , , , 1.5, mm, Steel High Strength, Polished, B
+MCH-003, Spacer Collar, tube, , , , , 40.0, 50.0, 30.0, , , 1.0, mm, Aluminum 6061, Blue, A
+MCH-004, Precision Mounting Block, block, 50.0, 35.0, 25.0, , , , , , 2.5, , mm, Stainless Steel, Default, C

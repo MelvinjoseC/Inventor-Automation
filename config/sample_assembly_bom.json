@@ -1,0 +1,57 @@
+[
+  {
+    "part_number": "ASM-BASE-01",
+    "name": "Base Fixture Plate",
+    "part_type": "plate_with_holes",
+    "width": 150.0,
+    "height": 100.0,
+    "thickness": 15.0,
+    "hole_diameter": 12.0,
+    "fillet_radius": 5.0,
+    "unit": "mm",
+    "material": "Steel, Mild",
+    "color": "Polished",
+    "revision": "A",
+    "quantity": 1
+  },
+  {
+    "part_number": "ASM-POST-02",
+    "name": "Support Guide Post",
+    "part_type": "cylinder",
+    "diameter": 25.0,
+    "length": 180.0,
+    "chamfer_distance": 2.0,
+    "unit": "mm",
+    "material": "Steel, Alloy",
+    "color": "Chrome",
+    "revision": "B",
+    "quantity": 2
+  },
+  {
+    "part_number": "ASM-BUSHING-03",
+    "name": "Sleeve Bushing",
+    "part_type": "tube",
+    "outer_diameter": 35.0,
+    "inner_diameter": 25.0,
+    "length": 60.0,
+    "unit": "mm",
+    "material": "Bronze, Soft Tin",
+    "color": "Brass - Soft",
+    "revision": "A",
+    "quantity": 2
+  },
+  {
+    "part_number": "ASM-CLAMP-04",
+    "name": "Top Retaining Clamp",
+    "part_type": "block",
+    "width": 80.0,
+    "height": 40.0,
+    "thickness": 20.0,
+    "fillet_radius": 3.0,
+    "unit": "mm",
+    "material": "Aluminum 6061",
+    "color": "Clear Anodized",
+    "revision": "C",
+    "quantity": 1
+  }
+]

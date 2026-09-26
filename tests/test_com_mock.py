@@ -256,3 +256,49 @@ def test_tube_primitive(mock_inventor_app):
     with pytest.raises(ValueError):
         engine.create_tube(part_doc, outer_diameter_cm=4.0, inner_diameter_cm=6.0, length_cm=10.0)
 
+def test_feature_modifications_fillet_chamfer_pocket(mock_inventor_app):
+    part_doc = MagicMock()
+    cd = part_doc.ComponentDefinition
+    
+    # Mock Edge collection & bodies
+    body = MagicMock()
+    edge1 = MagicMock()
+    body.Edges.Count = 4
+    body.Edges.Item.return_value = edge1
+    cd.SurfaceBodies.Item.return_value = body
+    
+    edge_col = MagicMock()
+    mock_inventor_app.TransientObjects.CreateEdgeCollection.return_value = edge_col
+    
+    # Mock Fillets
+    fillet_feature = MagicMock()
+    cd.Features.FilletFeatures.AddSimple.return_value = fillet_feature
+    
+    # Mock Chamfers
+    chamfer_feature = MagicMock()
+    cd.Features.ChamferFeatures.AddUsingDistance.return_value = chamfer_feature
+    
+    # Mock Cut Extrude
+    sketch = MagicMock()
+    cd.Sketches.Add.return_value = sketch
+    profile = MagicMock()
+    sketch.Profiles.AddForSolid.return_value = profile
+    pocket_feature = MagicMock()
+    cd.Features.ExtrudeFeatures.Add.return_value = pocket_feature
+    
+    engine = InventorAutomationEngine(mock_inventor_app)
+    
+    # Test Fillet
+    f = engine.add_fillet(part_doc, radius_cm=0.2)
+    assert f == fillet_feature
+    
+    # Test Chamfer
+    c = engine.add_chamfer(part_doc, distance_cm=0.1)
+    assert c == chamfer_feature
+    
+    # Test Cut Pocket
+    p = engine.create_cut_pocket(part_doc, 1.0, 1.0, 2.0, 2.0, 0.5)
+    assert p == pocket_feature
+    cd.Features.ExtrudeFeatures.CreateExtrudeDefinition.assert_called_with(profile, 20482)
+
+

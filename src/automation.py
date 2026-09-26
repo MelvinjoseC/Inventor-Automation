@@ -270,6 +270,106 @@ class InventorAutomationEngine:
             logger.error(f"Failed to generate tube: {e}")
             raise
 
+    def add_fillet(
+        self,
+        part_doc: Any,
+        radius_cm: float,
+        edges: Optional[Any] = None,
+    ) -> Any:
+        """Applies a fillet (rounding) feature to specified edges or all exterior edges."""
+        try:
+            logger.info(f"Applying fillet: Radius={radius_cm}cm")
+            cd = part_doc.ComponentDefinition
+            fillets = cd.Features.FilletFeatures
+
+            edge_col = edges
+            if edge_col is None:
+                edge_col = self.app.TransientObjects.CreateEdgeCollection()
+                body = cd.SurfaceBodies.Item(1)
+                for i in range(1, min(body.Edges.Count + 1, 20)):  # select candidate edges
+                    edge_col.Add(body.Edges.Item(i))
+
+            try:
+                # AddSimple method
+                fillet = fillets.AddSimple(edge_col, radius_cm)
+            except Exception:
+                # CreateFilletDefinition fallback
+                fillet_def = fillets.CreateFilletDefinition()
+                fillet_def.AddConstantRadiusEdgeSet(edge_col, radius_cm)
+                fillet = fillets.Add(fillet_def)
+
+            logger.info("Fillet feature applied successfully.")
+            return fillet
+        except Exception as e:
+            logger.warning(f"Could not apply fillet: {e}")
+            return None
+
+    def add_chamfer(
+        self,
+        part_doc: Any,
+        distance_cm: float,
+        edges: Optional[Any] = None,
+    ) -> Any:
+        """Applies a chamfer (beveled edge) feature to specified edges or exterior edges."""
+        try:
+            logger.info(f"Applying chamfer: Distance={distance_cm}cm")
+            cd = part_doc.ComponentDefinition
+            chamfers = cd.Features.ChamferFeatures
+
+            edge_col = edges
+            if edge_col is None:
+                edge_col = self.app.TransientObjects.CreateEdgeCollection()
+                body = cd.SurfaceBodies.Item(1)
+                for i in range(1, min(body.Edges.Count + 1, 10)):
+                    edge_col.Add(body.Edges.Item(i))
+
+            chamfer = chamfers.AddUsingDistance(edge_col, distance_cm)
+            logger.info("Chamfer feature applied successfully.")
+            return chamfer
+        except Exception as e:
+            logger.warning(f"Could not apply chamfer: {e}")
+            return None
+
+    def create_cut_pocket(
+        self,
+        part_doc: Any,
+        x_cm: float,
+        y_cm: float,
+        width_cm: float,
+        height_cm: float,
+        depth_cm: float,
+    ) -> Any:
+        """Performs a subtractive cut extrusion (pocket or slot) into the part."""
+        try:
+            logger.info(f"Generating cut pocket at ({x_cm}, {y_cm}) dim: {width_cm}x{height_cm}, depth={depth_cm}cm")
+            cd = part_doc.ComponentDefinition
+            xy_plane = cd.WorkPlanes.Item(3)
+            sketch = cd.Sketches.Add(xy_plane)
+
+            p1 = self.tg.CreatePoint2d(x_cm, y_cm)
+            p2 = self.tg.CreatePoint2d(x_cm + width_cm, y_cm + height_cm)
+            sketch.SketchLines.AddAsTwoPointRectangle(p1, p2)
+
+            profile = sketch.Profiles.AddForSolid()
+            extrudes = cd.Features.ExtrudeFeatures
+
+            try:
+                cut_op = constants.kCutOperation
+                pos_dir = constants.kPositiveExtentDirection
+            except AttributeError:
+                cut_op = 20482  # kCutOperation
+                pos_dir = 20993  # kPositiveExtentDirection
+
+            ext_def = extrudes.CreateExtrudeDefinition(profile, cut_op)
+            ext_def.SetDistanceExtent(depth_cm, pos_dir)
+            extrusion = extrudes.Add(ext_def)
+
+            logger.info("Cut pocket feature created successfully.")
+            return extrusion
+        except Exception as e:
+            logger.error(f"Failed to generate cut pocket: {e}")
+            raise
+
     def apply_material(self, part_doc: Any, material_name: str) -> None:
         """Applies a material to the part document."""
         try:

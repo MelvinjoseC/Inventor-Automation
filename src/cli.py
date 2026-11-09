@@ -54,8 +54,24 @@ def parse_args() -> argparse.Namespace:
         "generate-part",
         help="Generate a parametric 3D part (block, cylinder, plate_with_holes, tube) with drawings and exports.",
     )
-    part_parser.add_argument("--type", type=str, default="block", choices=["block", "cylinder", "plate_with_holes", "tube", "hex_fastener", "l_bracket", "circular_flange"], help="Part primitive geometry type")
-    part_parser.add_argument("--unit", type=str, default="cm", choices=["mm", "cm", "in"], help="Dimensional unit")
+    part_parser.add_argument(
+        "--type",
+        type=str,
+        default="block",
+        choices=[
+            "block",
+            "cylinder",
+            "plate_with_holes",
+            "tube",
+            "hex_fastener",
+            "l_bracket",
+            "circular_flange",
+        ],
+        help="Part primitive geometry type",
+    )
+    part_parser.add_argument(
+        "--unit", type=str, default="cm", choices=["mm", "cm", "in"], help="Dimensional unit"
+    )
     part_parser.add_argument("--width", type=float, help="Part width")
     part_parser.add_argument("--height", type=float, help="Part height")
     part_parser.add_argument("--thickness", type=float, help="Part thickness")
@@ -67,12 +83,18 @@ def parse_args() -> argparse.Namespace:
     part_parser.add_argument("--fillet-radius", type=float, help="Fillet edge radius")
     part_parser.add_argument("--chamfer-distance", type=float, help="Chamfer edge distance")
     part_parser.add_argument("--name", type=str, default="Part", help="Part description/name")
-    part_parser.add_argument("--part-number", type=str, default="PART-001", help="Unique part identifier")
+    part_parser.add_argument(
+        "--part-number", type=str, default="PART-001", help="Unique part identifier"
+    )
     part_parser.add_argument("--revision", type=str, default="A", help="Engineering revision tag")
     part_parser.add_argument("--material", type=str, help="Material name")
     part_parser.add_argument("--color", type=str, help="Appearance / color style name")
-    part_parser.add_argument("--skip-drawing", action="store_true", help="Do not generate drawing sheet")
-    part_parser.add_argument("--inspect", action="store_true", help="Perform DRC and physical properties inspection")
+    part_parser.add_argument(
+        "--skip-drawing", action="store_true", help="Do not generate drawing sheet"
+    )
+    part_parser.add_argument(
+        "--inspect", action="store_true", help="Perform DRC and physical properties inspection"
+    )
     part_parser.add_argument(
         "--export",
         type=str,
@@ -107,9 +129,13 @@ def parse_args() -> argparse.Namespace:
         "create-assembly",
         help="Assemble components into an IAM assembly document and generate drawing with parts list.",
     )
-    asm_parser.add_argument("--assembly-number", type=str, default="ASM-001", help="Assembly part number")
+    asm_parser.add_argument(
+        "--assembly-number", type=str, default="ASM-001", help="Assembly part number"
+    )
     asm_parser.add_argument("--name", type=str, default="Main Assembly", help="Assembly name")
-    asm_parser.add_argument("--components", type=str, required=True, help="Comma-separated list of component .ipt paths")
+    asm_parser.add_argument(
+        "--components", type=str, required=True, help="Comma-separated list of component .ipt paths"
+    )
     asm_parser.add_argument("--export", type=str, default="pdf,dwg,step", help="Export formats")
 
     # Command: Inspect
@@ -117,22 +143,30 @@ def parse_args() -> argparse.Namespace:
         "inspect",
         help="Inspect physical properties (mass, volume, CoG) and run DRC rules on an existing part.",
     )
-    inspect_parser.add_argument("--file", type=str, required=True, help="Path to .ipt part file to inspect")
+    inspect_parser.add_argument(
+        "--file", type=str, required=True, help="Path to .ipt part file to inspect"
+    )
 
     # Command: Export Batch
     export_parser = subparsers.add_parser(
         "export-batch",
         help="Batch export an existing Inventor document (.ipt, .iam, .idw) into STEP, STL, DWG, PDF, or PNG.",
     )
-    export_parser.add_argument("--file", type=str, required=True, help="Path to Inventor source file")
-    export_parser.add_argument("--formats", type=str, default="step,stl,pdf,dwg", help="Target formats")
+    export_parser.add_argument(
+        "--file", type=str, required=True, help="Path to Inventor source file"
+    )
+    export_parser.add_argument(
+        "--formats", type=str, default="step,stl,pdf,dwg", help="Target formats"
+    )
 
     # Command: Check Interference
     interf_parser = subparsers.add_parser(
         "check-interference",
         help="Run 3D collision and interference analysis on an assembly document (.iam).",
     )
-    interf_parser.add_argument("--assembly", type=str, required=True, help="Path to .iam assembly file")
+    interf_parser.add_argument(
+        "--assembly", type=str, required=True, help="Path to .iam assembly file"
+    )
 
     # Command: Estimate Cost
     cost_parser = subparsers.add_parser(
@@ -141,7 +175,9 @@ def parse_args() -> argparse.Namespace:
     )
     cost_parser.add_argument("--file", type=str, required=True, help="Path to .ipt part file")
     cost_parser.add_argument("--material", type=str, default="Steel, Mild", help="Material name")
-    cost_parser.add_argument("--hourly-rate", type=float, default=75.0, help="Machine shop rate ($/hr)")
+    cost_parser.add_argument(
+        "--hourly-rate", type=float, default=75.0, help="Machine shop rate ($/hr)"
+    )
 
     # Command: Bundle Release
     bundle_parser = subparsers.add_parser(
@@ -149,8 +185,12 @@ def parse_args() -> argparse.Namespace:
         help="Assemble CAD deliverables and reports into a versioned release ZIP with SHA-256 verification manifest.",
     )
     bundle_parser.add_argument("--name", type=str, required=True, help="Release package base name")
-    bundle_parser.add_argument("--files", type=str, required=True, help="Comma-separated list of deliverable file paths")
-    bundle_parser.add_argument("--output-dir", type=str, default="releases", help="Target directory for release bundle")
+    bundle_parser.add_argument(
+        "--files", type=str, required=True, help="Comma-separated list of deliverable file paths"
+    )
+    bundle_parser.add_argument(
+        "--output-dir", type=str, default="releases", help="Target directory for release bundle"
+    )
 
     return parser.parse_args()
 
@@ -192,9 +232,16 @@ def handle_generate_part(args: argparse.Namespace, config: ConfigLoader, app: An
         length = ConfigLoader.to_cm(args.length if args.length else 6.0, unit)
         engine.create_tube(part_doc, od, id_val, length, material, color)
     else:  # block
-        w = ConfigLoader.to_cm(args.width if args.width is not None else float(defaults.get("width", 2.0)), unit)
-        h = ConfigLoader.to_cm(args.height if args.height is not None else float(defaults.get("height", 1.0)), unit)
-        t = ConfigLoader.to_cm(args.thickness if args.thickness is not None else float(defaults.get("thickness", 0.5)), unit)
+        w = ConfigLoader.to_cm(
+            args.width if args.width is not None else float(defaults.get("width", 2.0)), unit
+        )
+        h = ConfigLoader.to_cm(
+            args.height if args.height is not None else float(defaults.get("height", 1.0)), unit
+        )
+        t = ConfigLoader.to_cm(
+            args.thickness if args.thickness is not None else float(defaults.get("thickness", 0.5)),
+            unit,
+        )
         engine.create_block(part_doc, w, h, t, material, color)
 
     # Optional feature modifications
@@ -209,7 +256,9 @@ def handle_generate_part(args: argparse.Namespace, config: ConfigLoader, app: An
         drc_result = inspector.run_drc(part_doc)
         print("\n--- Model Inspection & DRC Summary ---")
         print(f"Overall Status: {'PASSED' if drc_result['overall_passed'] else 'FAILED'}")
-        print(f"Mass: {drc_result['properties']['mass_kg']} kg | Volume: {drc_result['properties']['volume_cm3']} cm³")
+        print(
+            f"Mass: {drc_result['properties']['mass_kg']} kg | Volume: {drc_result['properties']['volume_cm3']} cm³"
+        )
         for c in drc_result["checks"]:
             status_icon = "✅" if c["passed"] else "❌"
             print(f"  {status_icon} {c['rule']}: {c['details']}")
@@ -223,7 +272,9 @@ def handle_generate_part(args: argparse.Namespace, config: ConfigLoader, app: An
     drawing_doc = None
     if not args.skip_drawing:
         generator = DrawingGenerator(app, config.drawing_settings)
-        drawing_doc = generator.create_drawing(part_doc, args.part_number, args.name, revision=args.revision)
+        drawing_doc = generator.create_drawing(
+            part_doc, args.part_number, args.name, revision=args.revision
+        )
         drawings_dir = config.get_path("paths.drawings_dir")
         drawing_path = drawings_dir / f"{args.part_number}.idw"
         engine.save_document(drawing_doc, drawing_path)
@@ -233,7 +284,9 @@ def handle_generate_part(args: argparse.Namespace, config: ConfigLoader, app: An
         formats = [f.strip().lower() for f in args.export.split(",") if f.strip()]
         exporter = InventorExporter(app)
         exports_dir = config.get_path("paths.exports_dir")
-        exporter.export_batch(part_doc, args.part_number, exports_dir, formats, drawing_doc=drawing_doc)
+        exporter.export_batch(
+            part_doc, args.part_number, exports_dir, formats, drawing_doc=drawing_doc
+        )
 
     # Cleanup
     if drawing_doc:
@@ -242,7 +295,11 @@ def handle_generate_part(args: argparse.Namespace, config: ConfigLoader, app: An
 
 
 def handle_process_bom(args: argparse.Namespace, config: ConfigLoader, app: Any) -> None:
-    bom_file = args.bom_file if args.bom_file else config.bom_settings.get("default_bom_file", "config/sample_bom.json")
+    bom_file = (
+        args.bom_file
+        if args.bom_file
+        else config.bom_settings.get("default_bom_file", "config/sample_bom.json")
+    )
     bom_path = Path(bom_file)
 
     processor = BomProcessor(config.default_part_settings)
@@ -256,7 +313,9 @@ def handle_process_bom(args: argparse.Namespace, config: ConfigLoader, app: Any)
     output_dir = config.get_path("paths.output_dir")
     drawings_dir = config.get_path("paths.drawings_dir")
     exports_dir = config.get_path("paths.exports_dir")
-    formats = [f.strip().lower() for f in args.export.split(",") if f.strip()] if args.export else []
+    formats = (
+        [f.strip().lower() for f in args.export.split(",") if f.strip()] if args.export else []
+    )
 
     logger.info(f"Processing BOM: {len(bom_items)} parts to generate...")
 
@@ -269,35 +328,75 @@ def handle_process_bom(args: argparse.Namespace, config: ConfigLoader, app: Any)
                 with TransactionContext(app, part_doc, f"Build_{item.part_number}"):
                     # Dispatch to specific primitive method
                     if item.part_type == "cylinder":
-                        engine.create_cylinder(part_doc, item.diameter_cm, item.length_cm, item.material, item.color)
+                        engine.create_cylinder(
+                            part_doc, item.diameter_cm, item.length_cm, item.material, item.color
+                        )
                     elif item.part_type == "tube":
-                        engine.create_tube(part_doc, item.outer_diameter_cm, item.inner_diameter_cm, item.length_cm, item.material, item.color)
+                        engine.create_tube(
+                            part_doc,
+                            item.outer_diameter_cm,
+                            item.inner_diameter_cm,
+                            item.length_cm,
+                            item.material,
+                            item.color,
+                        )
                     elif item.part_type == "plate_with_holes":
                         engine.create_plate_with_holes(
-                            part_doc, item.width_cm, item.height_cm, item.thickness_cm,
-                            item.hole_diameter_cm, item.hole_margin_x_cm, item.hole_margin_y_cm,
-                            item.corner_holes, item.center_hole, item.material, item.color,
+                            part_doc,
+                            item.width_cm,
+                            item.height_cm,
+                            item.thickness_cm,
+                            item.hole_diameter_cm,
+                            item.hole_margin_x_cm,
+                            item.hole_margin_y_cm,
+                            item.corner_holes,
+                            item.center_hole,
+                            item.material,
+                            item.color,
                         )
                     elif item.part_type == "hex_fastener":
                         engine.create_hex_fastener(
-                            part_doc, item.across_flats_cm, item.head_height_cm,
-                            item.shank_diameter_cm, item.shank_length_cm, item.material, item.color,
+                            part_doc,
+                            item.across_flats_cm,
+                            item.head_height_cm,
+                            item.shank_diameter_cm,
+                            item.shank_length_cm,
+                            item.material,
+                            item.color,
                         )
                     elif item.part_type == "l_bracket":
                         engine.create_l_bracket(
-                            part_doc, item.leg1_length_cm, item.leg2_length_cm,
-                            item.width_cm, item.thickness_cm, item.material, item.color,
+                            part_doc,
+                            item.leg1_length_cm,
+                            item.leg2_length_cm,
+                            item.width_cm,
+                            item.thickness_cm,
+                            item.material,
+                            item.color,
                         )
                     elif item.part_type == "circular_flange":
                         engine.create_circular_flange(
-                            part_doc, item.outer_diameter_cm, item.inner_diameter_cm,
-                            item.thickness_cm, item.pcd_cm, item.bolt_count,
-                            item.bolt_hole_diameter_cm, item.material, item.color,
+                            part_doc,
+                            item.outer_diameter_cm,
+                            item.inner_diameter_cm,
+                            item.thickness_cm,
+                            item.pcd_cm,
+                            item.bolt_count,
+                            item.bolt_hole_diameter_cm,
+                            item.material,
+                            item.color,
                         )
                     elif item.part_type == "stepped_shaft":
                         engine.create_stepped_shaft(part_doc, item.steps, item.material, item.color)
                     else:
-                        engine.create_block(part_doc, item.width_cm, item.height_cm, item.thickness_cm, item.material, item.color)
+                        engine.create_block(
+                            part_doc,
+                            item.width_cm,
+                            item.height_cm,
+                            item.thickness_cm,
+                            item.material,
+                            item.color,
+                        )
 
                     # Feature modifications
                     if item.fillet_radius_cm:
@@ -312,12 +411,16 @@ def handle_process_bom(args: argparse.Namespace, config: ConfigLoader, app: Any)
                 part_path = output_dir / f"{item.part_number}.ipt"
                 engine.save_document(part_doc, part_path)
 
-                drawing_doc = generator.create_drawing(part_doc, item.part_number, item.name, revision=item.revision)
+                drawing_doc = generator.create_drawing(
+                    part_doc, item.part_number, item.name, revision=item.revision
+                )
                 drawing_path = drawings_dir / f"{item.part_number}.idw"
                 engine.save_document(drawing_doc, drawing_path)
 
                 if formats:
-                    exporter.export_batch(part_doc, item.part_number, exports_dir, formats, drawing_doc=drawing_doc)
+                    exporter.export_batch(
+                        part_doc, item.part_number, exports_dir, formats, drawing_doc=drawing_doc
+                    )
 
                 engine.close_document(drawing_doc)
                 engine.close_document(part_doc)
@@ -336,7 +439,7 @@ def handle_create_assembly(args: argparse.Namespace, config: ConfigLoader, app: 
     spacing = 10.0  # cm spacing between placed components
 
     for idx, comp_path in enumerate(comp_paths):
-        is_base = (idx == 0)
+        is_base = idx == 0
         asm_engine.place_component(asm_doc, comp_path, x_cm=idx * spacing, grounded=is_base)
 
     output_dir = config.get_path("paths.output_dir")
@@ -360,7 +463,9 @@ def handle_create_assembly(args: argparse.Namespace, config: ConfigLoader, app: 
     if args.export:
         formats = [f.strip().lower() for f in args.export.split(",") if f.strip()]
         exports_dir = config.get_path("paths.exports_dir")
-        exporter.export_batch(asm_doc, args.assembly_number, exports_dir, formats, drawing_doc=drawing_doc)
+        exporter.export_batch(
+            asm_doc, args.assembly_number, exports_dir, formats, drawing_doc=drawing_doc
+        )
 
     drawing_doc.Close(True)
     asm_doc.Close(True)
@@ -385,8 +490,11 @@ def handle_inspect(args: argparse.Namespace, config: ConfigLoader, app: Any) -> 
         print(f"Mass: {p['mass_kg']} kg")
         print(f"Volume: {p['volume_cm3']} cm³")
         print(f"Surface Area: {p['surface_area_cm2']} cm²")
-        print(f"Bounding Box: {p['bounding_box_cm']['dx']} x {p['bounding_box_cm']['dy']} x {p['bounding_box_cm']['dz']} cm")
-        print(f"Center of Mass: ({p['center_of_gravity']['x_cm']}, {p['center_of_gravity']['y_cm']}, {p['center_of_gravity']['z_cm']}) cm")
+        print(
+            f"Bounding Box: {p['bounding_box_cm']['dx']}x{p['bounding_box_cm']['dy']}x{p['bounding_box_cm']['dz']} cm"
+        )
+        cg = p["center_of_gravity"]
+        print(f"CoG: ({cg['x_cm']}, {cg['y_cm']}, {cg['z_cm']}) cm")
         print("\nDesign Rule Checks:")
         for c in drc["checks"]:
             icon = "✅ PASS" if c["passed"] else "❌ FAIL"
@@ -427,12 +535,16 @@ def handle_check_interference(args: argparse.Namespace, config: ConfigLoader, ap
 
         print("\n=== 3D Assembly Interference Report ===")
         print(f"File: {path.name}")
-        print(f"Collision Detected: {'YES (COLLISION WARNING)' if report['has_interference'] else 'NO (CLEAR)'}")
+        print(
+            f"Collision Detected: {'YES (COLLISION WARNING)' if report['has_interference'] else 'NO (CLEAR)'}"
+        )
         print(f"Total Interferences: {report['interference_count']}")
         print(f"Total Interference Volume: {report['total_interference_volume_cm3']} cm³")
 
         for idx, inter in enumerate(report["interferences"], 1):
-            print(f"  [{idx}] {inter['occurrence_1']} <--> {inter['occurrence_2']}: {inter['volume_cm3']} cm³ at {inter['centroid']}")
+            print(
+                f"  [{idx}] {inter['occurrence_1']} <-> {inter['occurrence_2']}: {inter['volume_cm3']} cm³"
+            )
     finally:
         doc.Close(True)
 
@@ -456,9 +568,13 @@ def handle_estimate_cost(args: argparse.Namespace, config: ConfigLoader, app: An
 
         print("\n=== Manufacturing Cost & Stock Estimation ===")
         print(f"Part: {path.name} | Material: {cost_report['material']}")
-        dims = cost_report['stock_dimensions_cm']
-        print(f"Required Stock Billet: {dims['dx']} x {dims['dy']} x {dims['dz']} cm ({cost_report['stock_volume_cm3']} cm³, {cost_report['stock_mass_kg']} kg)")
-        print(f"Finished Part Mass: {cost_report['finished_mass_kg']} kg | Scrap Volume: {cost_report['scrap_volume_cm3']} cm³ ({cost_report['material_removal_percentage']}%)")
+        dims = cost_report["stock_dimensions_cm"]
+        vol_info = f"{cost_report['stock_volume_cm3']} cm3, {cost_report['stock_mass_kg']} kg"
+        print(f"Stock: {dims['dx']}x{dims['dy']}x{dims['dz']} cm ({vol_info})")
+        scrap_info = (
+            f"{cost_report['scrap_volume_cm3']} cm3 ({cost_report['material_removal_percentage']}%)"
+        )
+        print(f"Part Mass: {cost_report['finished_mass_kg']} kg | Scrap: {scrap_info}")
         print(f"Estimated Machining Time: {cost_report['machining_time_minutes']} min")
         print(f"Raw Material Cost: ${cost_report['material_cost_usd']:.2f}")
         print(f"Machining Cost: ${cost_report['machining_cost_usd']:.2f}")
@@ -476,7 +592,7 @@ def handle_bundle_release(args: argparse.Namespace) -> None:
         files_to_pack=file_paths,
         output_dir=out_dir,
     )
-    print(f"\n=== Manufacturing Release Bundle Created ===")
+    print("\n=== Manufacturing Release Bundle Created ===")
     print(f"Archive: {zip_path}")
     print(f"Verified Files: {manifest['file_count']}")
     for f in manifest["files"]:
@@ -496,12 +612,16 @@ def main() -> None:
         logger.info("Running Environment Diagnostics...")
         try:
             import diagnose
+
             diagnose.run_diagnostics()
         except ImportError:
             import winreg
+
             try:
                 key = winreg.OpenKey(winreg.HKEY_CLASSES_ROOT, "Inventor.Application")
-                logger.info("✅ SUCCESS: Inventor.Application ProgID registered in Windows Registry.")
+                logger.info(
+                    "✅ SUCCESS: Inventor.Application ProgID registered in Windows Registry."
+                )
                 winreg.CloseKey(key)
             except WindowsError:
                 logger.error("❌ FAILURE: Inventor.Application is NOT registered in this system.")

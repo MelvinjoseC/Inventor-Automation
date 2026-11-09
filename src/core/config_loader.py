@@ -25,9 +25,10 @@ UNIT_CONVERSION_TO_CM = {
     "feet": 30.48,
 }
 
+
 class ConfigLoader:
     """Manages parsing, validation, environment variable overrides, and retrieval of automation configurations."""
-    
+
     DEFAULT_CONFIG: Dict[str, Any] = {
         "inventor": {
             "visible": True,
@@ -78,22 +79,31 @@ class ConfigLoader:
     def _load_config(self) -> Dict[str, Any]:
         """Loads configuration from JSON file. Falls back to safe defaults on failure."""
         import copy
+
         merged_config = copy.deepcopy(self.DEFAULT_CONFIG)
 
         if not self.config_path.exists():
-            logger.warning(f"Config file not found at {self.config_path}. Using default configuration.")
+            logger.warning(
+                f"Config file not found at {self.config_path}. Using default configuration."
+            )
             return merged_config
 
         try:
             with open(self.config_path, "r", encoding="utf-8") as f:
                 loaded = json.load(f)
                 if not isinstance(loaded, dict):
-                    logger.error(f"Config file {self.config_path} does not contain a JSON object. Using defaults.")
+                    logger.error(
+                        f"Config file {self.config_path} does not contain a JSON object. Using defaults."
+                    )
                     return merged_config
 
                 # Deep merge loaded configuration with defaults
                 for section, values in merged_config.items():
-                    if section in loaded and isinstance(loaded[section], dict) and isinstance(values, dict):
+                    if (
+                        section in loaded
+                        and isinstance(loaded[section], dict)
+                        and isinstance(values, dict)
+                    ):
                         for k, v in loaded[section].items():
                             values[k] = v
                     elif section in loaded:
@@ -107,15 +117,23 @@ class ConfigLoader:
                 logger.info(f"Successfully loaded configuration from {self.config_path}")
                 return merged_config
         except Exception as e:
-            logger.error(f"Failed to parse config file: {e}. Falling back to default configuration.")
+            logger.error(
+                f"Failed to parse config file: {e}. Falling back to default configuration."
+            )
             return merged_config
 
     def _apply_env_overrides(self) -> None:
         """Applies environment variable overrides to configuration."""
         env_mappings = {
             "INVENTOR_VISIBLE": ("inventor.visible", lambda v: v.lower() in ("true", "1", "yes")),
-            "INVENTOR_SILENT_MODE": ("inventor.silent_mode", lambda v: v.lower() in ("true", "1", "yes")),
-            "INVENTOR_SCREEN_UPDATING": ("inventor.screen_updating", lambda v: v.lower() in ("true", "1", "yes")),
+            "INVENTOR_SILENT_MODE": (
+                "inventor.silent_mode",
+                lambda v: v.lower() in ("true", "1", "yes"),
+            ),
+            "INVENTOR_SCREEN_UPDATING": (
+                "inventor.screen_updating",
+                lambda v: v.lower() in ("true", "1", "yes"),
+            ),
             "INVENTOR_DEFAULT_UNIT": ("inventor.default_unit", str),
             "INVENTOR_OUTPUT_DIR": ("paths.output_dir", str),
             "INVENTOR_DRAWINGS_DIR": ("paths.drawings_dir", str),
@@ -131,7 +149,9 @@ class ConfigLoader:
                 try:
                     transformed = transform_fn(val)
                     self._set_nested(config_key, transformed)
-                    logger.info(f"Applied environment override: {env_var} -> {config_key} = {transformed}")
+                    logger.info(
+                        f"Applied environment override: {env_var} -> {config_key} = {transformed}"
+                    )
                 except Exception as e:
                     logger.warning(f"Failed to parse environment variable {env_var}='{val}': {e}")
 

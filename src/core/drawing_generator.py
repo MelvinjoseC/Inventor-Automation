@@ -131,7 +131,9 @@ class DrawingGenerator:
             if hasattr(balloons, "AutoBalloon"):
                 curves = getattr(base_view, "DrawingCurves", None)
                 if curves and curves.Count > 0:
-                    leader_points = self.tg.CreatePoint2d(base_view.Center.X + 6.0, base_view.Center.Y + 4.0)
+                    leader_points = self.tg.CreatePoint2d(
+                        base_view.Center.X + 6.0, base_view.Center.Y + 4.0
+                    )
                     balloons.AutoBalloon(base_view, leader_points)
                     logger.info("Auto-ballooning applied across assembly views.")
                     return 1
@@ -144,7 +146,9 @@ class DrawingGenerator:
                     curve = curves.Item(i)
                     try:
                         intent = sheet.CreateGeometryIntent(curve)
-                        pos = self.tg.CreatePoint2d(base_view.Center.X + (i * 2.0), base_view.Center.Y + 3.0)
+                        pos = self.tg.CreatePoint2d(
+                            base_view.Center.X + (i * 2.0), base_view.Center.Y + 3.0
+                        )
                         balloons.Add(intent, pos)
                         balloon_count += 1
                     except Exception:
@@ -228,8 +232,16 @@ class DrawingGenerator:
 
         try:
             size_map = {
-                "A0": 9990, "A1": 9991, "A2": 9992, "A3": 9993, "A4": 9994,
-                "A": 9985, "B": 9986, "C": 9987, "D": 9988, "E": 9989,
+                "A0": 9990,
+                "A1": 9991,
+                "A2": 9992,
+                "A3": 9993,
+                "A4": 9994,
+                "A": 9985,
+                "B": 9986,
+                "C": 9987,
+                "D": 9988,
+                "E": 9989,
             }
             size_enum = size_map.get(size_str, 9993)  # default A3
             try:

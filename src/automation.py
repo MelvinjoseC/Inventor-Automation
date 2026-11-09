@@ -6,6 +6,7 @@ from win32com.client import CastTo, constants
 
 logger = logging.getLogger("InventorAutomation.Engine")
 
+
 class InventorAutomationEngine:
     """Core automation engine for Autodesk Inventor tasks like modeling and document handling."""
 
@@ -40,20 +41,22 @@ class InventorAutomationEngine:
             template_path = self.app.FileManager.GetTemplateFile(self.kAssemblyDocumentObject)
             doc = self.app.Documents.Add(self.kAssemblyDocumentObject, template_path, True)
             assembly_doc = CastTo(doc, "AssemblyDocument")
-            logger.info(f"New Assembly Document created successfully. Handle: {assembly_doc.DisplayName}")
+            logger.info(
+                f"New Assembly Document created successfully. Handle: {assembly_doc.DisplayName}"
+            )
             return assembly_doc
         except Exception as e:
             logger.error(f"Failed to create new Assembly Document: {e}")
             raise
 
     def create_block(
-        self, 
-        part_doc: Any, 
-        width_cm: float, 
-        height_cm: float, 
+        self,
+        part_doc: Any,
+        width_cm: float,
+        height_cm: float,
         thickness_cm: float,
         material: Optional[str] = None,
-        color: Optional[str] = None
+        color: Optional[str] = None,
     ) -> Any:
         """Generates a 3D block (rectangular cuboid) geometry on the XY work plane."""
         try:
@@ -61,24 +64,24 @@ class InventorAutomationEngine:
                 f"Generating block: Width={width_cm}cm, Height={height_cm}cm, Thickness={thickness_cm}cm"
             )
             cd = part_doc.ComponentDefinition
-            
+
             # Select the XY Plane (typically Index 3 in WorkPlanes collection)
             xy_plane = cd.WorkPlanes.Item(3)
-            
+
             # Add a 2D sketch
             sketch = cd.Sketches.Add(xy_plane)
-            
+
             # Draw a 2D Rectangle from origin (0,0)
             p1 = self.tg.CreatePoint2d(0, 0)
             p2 = self.tg.CreatePoint2d(width_cm, height_cm)
             sketch.SketchLines.AddAsTwoPointRectangle(p1, p2)
-            
+
             # Create profiles
             profile = sketch.Profiles.AddForSolid()
-            
+
             # Perform Extrusion
             extrudes = cd.Features.ExtrudeFeatures
-            
+
             # Try using constant, fallback to integer values if constants are not loaded
             try:
                 join_op = constants.kJoinOperation
@@ -89,7 +92,7 @@ class InventorAutomationEngine:
 
             ext_def = extrudes.CreateExtrudeDefinition(profile, join_op)
             ext_def.SetDistanceExtent(thickness_cm, pos_dir)
-            
+
             extrusion = extrudes.Add(ext_def)
             logger.info("Extrusion feature created successfully.")
 
@@ -179,8 +182,12 @@ class InventorAutomationEngine:
             sketch.SketchLines.AddAsTwoPointRectangle(p1, p2)
 
             hole_radius = hole_diameter_cm / 2.0
-            margin_x = hole_margin_x_cm if hole_margin_x_cm is not None else min(width_cm * 0.15, 1.0)
-            margin_y = hole_margin_y_cm if hole_margin_y_cm is not None else min(height_cm * 0.15, 1.0)
+            margin_x = (
+                hole_margin_x_cm if hole_margin_x_cm is not None else min(width_cm * 0.15, 1.0)
+            )
+            margin_y = (
+                hole_margin_y_cm if hole_margin_y_cm is not None else min(height_cm * 0.15, 1.0)
+            )
 
             if corner_holes:
                 corner_centers = [
@@ -190,7 +197,9 @@ class InventorAutomationEngine:
                     (margin_x, height_cm - margin_y),
                 ]
                 for cx, cy in corner_centers:
-                    sketch.SketchCircles.AddByCenterRadius(self.tg.CreatePoint2d(cx, cy), hole_radius)
+                    sketch.SketchCircles.AddByCenterRadius(
+                        self.tg.CreatePoint2d(cx, cy), hole_radius
+                    )
 
             if center_hole:
                 sketch.SketchCircles.AddByCenterRadius(
@@ -234,10 +243,14 @@ class InventorAutomationEngine:
     ) -> Any:
         """Generates a hollow cylindrical tube / pipe feature."""
         if inner_diameter_cm >= outer_diameter_cm:
-            raise ValueError(f"Inner diameter ({inner_diameter_cm}) must be smaller than outer ({outer_diameter_cm})")
+            raise ValueError(
+                f"Inner diameter ({inner_diameter_cm}) must be smaller than outer ({outer_diameter_cm})"
+            )
 
         try:
-            logger.info(f"Generating tube: OD={outer_diameter_cm}cm, ID={inner_diameter_cm}cm, Length={length_cm}cm")
+            logger.info(
+                f"Generating tube: OD={outer_diameter_cm}cm, ID={inner_diameter_cm}cm, Length={length_cm}cm"
+            )
             cd = part_doc.ComponentDefinition
             xy_plane = cd.WorkPlanes.Item(3)
             sketch = cd.Sketches.Add(xy_plane)
@@ -271,7 +284,6 @@ class InventorAutomationEngine:
             logger.error(f"Failed to generate tube: {e}")
             raise
 
-
     def create_hex_fastener(
         self,
         part_doc: Any,
@@ -297,7 +309,9 @@ class InventorAutomationEngine:
             pts = []
             for i in range(6):
                 angle = math.radians(60 * i)
-                pts.append(self.tg.CreatePoint2d(radius * math.cos(angle), radius * math.sin(angle)))
+                pts.append(
+                    self.tg.CreatePoint2d(radius * math.cos(angle), radius * math.sin(angle))
+                )
 
             for i in range(6):
                 sketch1.SketchLines.AddByTwoPoints(pts[i], pts[(i + 1) % 6])
@@ -321,7 +335,9 @@ class InventorAutomationEngine:
             # 2. Sketch shank extending along negative Z
             if shank_length_cm > 0:
                 sketch2 = cd.Sketches.Add(xy_plane)
-                sketch2.SketchCircles.AddByCenterRadius(self.tg.CreatePoint2d(0, 0), shank_diameter_cm / 2.0)
+                sketch2.SketchCircles.AddByCenterRadius(
+                    self.tg.CreatePoint2d(0, 0), shank_diameter_cm / 2.0
+                )
                 profile2 = sketch2.Profiles.AddForSolid()
                 ext_def2 = extrudes.CreateExtrudeDefinition(profile2, join_op)
                 ext_def2.SetDistanceExtent(shank_length_cm, neg_dir)
@@ -337,7 +353,6 @@ class InventorAutomationEngine:
         except Exception as e:
             logger.error(f"Failed to generate hex fastener: {e}")
             raise
-
 
     def create_stepped_shaft(
         self,
@@ -413,7 +428,6 @@ class InventorAutomationEngine:
         except Exception as e:
             logger.error(f"Failed to generate stepped shaft: {e}")
             raise
-
 
     def create_l_bracket(
         self,
@@ -540,7 +554,9 @@ class InventorAutomationEngine:
                     angle = (2.0 * math.pi * i) / bolt_count
                     bx = pcd_radius * math.cos(angle)
                     by = pcd_radius * math.sin(angle)
-                    sketch.SketchCircles.AddByCenterRadius(self.tg.CreatePoint2d(bx, by), hole_radius)
+                    sketch.SketchCircles.AddByCenterRadius(
+                        self.tg.CreatePoint2d(bx, by), hole_radius
+                    )
 
             profile = sketch.Profiles.AddForSolid()
             extrudes = cd.Features.ExtrudeFeatures
@@ -566,7 +582,6 @@ class InventorAutomationEngine:
         except Exception as e:
             logger.error(f"Failed to generate circular flange: {e}")
             raise
-
 
     def create_hole_feature(
         self,
@@ -650,7 +665,9 @@ class InventorAutomationEngine:
                 # Fallback: create through-cut circles in sketch if HoleFeatures is unavailable in mock/COM
                 logger.debug(f"Direct HoleFeature dispatch fallback: {com_err}")
                 for cx, cy in center_points:
-                    sketch.SketchCircles.AddByCenterRadius(self.tg.CreatePoint2d(cx, cy), diameter_cm / 2.0)
+                    sketch.SketchCircles.AddByCenterRadius(
+                        self.tg.CreatePoint2d(cx, cy), diameter_cm / 2.0
+                    )
                 profile = sketch.Profiles.AddForSolid()
                 extrudes = cd.Features.ExtrudeFeatures
                 try:
@@ -740,7 +757,9 @@ class InventorAutomationEngine:
     ) -> Any:
         """Performs a subtractive cut extrusion (pocket or slot) into the part."""
         try:
-            logger.info(f"Generating cut pocket at ({x_cm}, {y_cm}) dim: {width_cm}x{height_cm}, depth={depth_cm}cm")
+            logger.info(
+                f"Generating cut pocket at ({x_cm}, {y_cm}) dim: {width_cm}x{height_cm}, depth={depth_cm}cm"
+            )
             cd = part_doc.ComponentDefinition
             xy_plane = cd.WorkPlanes.Item(3)
             sketch = cd.Sketches.Add(xy_plane)
@@ -781,7 +800,7 @@ class InventorAutomationEngine:
             except Exception:
                 # If local materials collection doesn't work directly, try default material assignment
                 logger.warning(
-                    f"Material '{material_name}' not found in active document collection. Attempting fallback assignment."
+                    f"Material '{material_name}' not found in collection. Fallback assignment."
                 )
                 cd.Material = cd.Material  # Keep existing material or default
         except Exception as e:
@@ -803,7 +822,9 @@ class InventorAutomationEngine:
                     part_doc.ActiveRenderStyle = render_style
                     logger.info(f"Applied render style '{color_name}' (fallback).")
                 except Exception:
-                    logger.warning(f"Appearance/Color style '{color_name}' could not be resolved in Inventor.")
+                    logger.warning(
+                        f"Appearance/Color style '{color_name}' could not be resolved in Inventor."
+                    )
         except Exception as e:
             logger.warning(f"Unable to apply color '{color_name}': {e}")
 
@@ -812,12 +833,12 @@ class InventorAutomationEngine:
         try:
             target = save_path.expanduser().resolve()
             target.parent.mkdir(parents=True, exist_ok=True)
-            
+
             # If target file exists, delete it before overwriting to prevent save dialogue conflicts
             if target.exists():
                 logger.info(f"File exists at {target}. Unlinking before overwrite...")
                 target.unlink()
-                
+
             logger.info(f"Saving document to: {target}")
             doc.SaveAs(str(target), True)
             logger.info("Document saved successfully.")

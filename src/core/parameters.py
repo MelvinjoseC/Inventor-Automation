@@ -6,7 +6,7 @@ logger = logging.getLogger("InventorAutomation.Parameters")
 
 class ParameterManager:
     """Manages User Parameters and Model Parameters in Autodesk Inventor documents.
-    
+
     Provides programmatic read/write access to parametric CAD dimensions and equations.
     """
 
@@ -28,8 +28,12 @@ class ParameterManager:
         units: str = "mm",
     ) -> Any:
         """Creates or updates a user parameter with a given name, expression, and unit."""
-        expr_str = f"{expression} {units}".strip() if isinstance(expression, (int, float)) else str(expression)
-        
+        expr_str = (
+            f"{expression} {units}".strip()
+            if isinstance(expression, (int, float))
+            else str(expression)
+        )
+
         try:
             # Check if parameter already exists
             param = self.user_parameters.Item(name)
@@ -63,11 +67,13 @@ class ParameterManager:
         param = self.get_parameter(name)
         return param.Expression if param else None
 
-    def update_parameters(self, params: Dict[str, Union[str, float]], default_units: str = "mm") -> None:
+    def update_parameters(
+        self, params: Dict[str, Union[str, float]], default_units: str = "mm"
+    ) -> None:
         """Batch updates or creates multiple parameters and triggers model update."""
         for name, expr in params.items():
             self.set_user_parameter(name, expr, units=default_units)
-        
+
         # Trigger document update to propagate parameter changes across features
         try:
             self.doc.Update2(True)

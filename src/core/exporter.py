@@ -42,7 +42,9 @@ class InventorExporter:
     def export_step(self, doc: Any, output_path: Path, protocol: int = 214) -> Path:
         """Exports a 3D Part or Assembly as STEP (AP214 or AP203)."""
         logger.info(f"Exporting to STEP: {output_path} (Protocol AP{protocol})")
-        return self._translate_file(doc, self.STEP_CLSID, output_path, format_type="step", step_protocol=protocol)
+        return self._translate_file(
+            doc, self.STEP_CLSID, output_path, format_type="step", step_protocol=protocol
+        )
 
     def export_iges(self, doc: Any, output_path: Path) -> Path:
         """Exports a 3D Part or Assembly as IGES."""
@@ -52,7 +54,9 @@ class InventorExporter:
     def export_stl(self, doc: Any, output_path: Path, resolution: str = "High") -> Path:
         """Exports a 3D Part or Assembly as STL for 3D printing / additive manufacturing."""
         logger.info(f"Exporting to STL: {output_path} (Resolution: {resolution})")
-        return self._translate_file(doc, self.STL_CLSID, output_path, format_type="stl", stl_resolution=resolution)
+        return self._translate_file(
+            doc, self.STL_CLSID, output_path, format_type="stl", stl_resolution=resolution
+        )
 
     def export_image(
         self,
@@ -197,7 +201,6 @@ class InventorExporter:
             logger.error(f"Translation/Export failed for {target}: {e}")
             raise RuntimeError(f"Export failed: {e}") from e
 
-
     @staticmethod
     def compute_sha256(file_path: Path) -> str:
         """Calculates SHA-256 cryptographic checksum of a file."""
@@ -246,7 +249,9 @@ class InventorExporter:
             else:
                 logger.warning(f"Bundle file skipped (not found): {p}")
 
-        logger.info(f"Creating manufacturing release package '{zip_path.name}' with {len(valid_files)} files...")
+        logger.info(
+            f"Creating manufacturing release package '{zip_path.name}' with {len(valid_files)} files..."
+        )
 
         with zipfile.ZipFile(zip_path, mode="w", compression=zipfile.ZIP_DEFLATED) as zf:
             for file_path in valid_files:
@@ -255,15 +260,19 @@ class InventorExporter:
 
                 zf.write(file_path, arcname=file_path.name)
 
-                manifest["files"].append({
-                    "name": file_path.name,
-                    "size_bytes": file_size,
-                    "sha256": sha256_hash,
-                })
+                manifest["files"].append(
+                    {
+                        "name": file_path.name,
+                        "size_bytes": file_size,
+                        "sha256": sha256_hash,
+                    }
+                )
 
             manifest["file_count"] = len(manifest["files"])
             manifest_json_str = json.dumps(manifest, indent=2)
             zf.writestr("MANIFEST.json", manifest_json_str)
 
-        logger.info(f"Release package generated successfully: {zip_path} ({manifest['file_count']} files verified).")
+        logger.info(
+            f"Release package generated successfully: {zip_path} ({manifest['file_count']} files verified)."
+        )
         return zip_path, manifest

@@ -58,7 +58,9 @@ class CostEstimator:
             custom_density: Optional density override in g/cm3.
         """
         profile = self.get_material_profile(material_name)
-        density_g_cm3 = custom_density if custom_density and custom_density > 0 else profile["density"]
+        density_g_cm3 = (
+            custom_density if custom_density and custom_density > 0 else profile["density"]
+        )
         cost_per_kg = profile["cost_per_kg"]
         mrr = profile["mrr_cm3_min"]
 
@@ -77,7 +79,9 @@ class CostEstimator:
         # Finished mass & waste calculation
         finished_mass_kg = round((finished_volume_cm3 * density_g_cm3) / 1000.0, 3)
         scrap_volume_cm3 = max(0.0, round(stock_volume_cm3 - finished_volume_cm3, 2))
-        material_removal_pct = round((scrap_volume_cm3 / stock_volume_cm3 * 100.0), 1) if stock_volume_cm3 > 0 else 0.0
+        material_removal_pct = (
+            round((scrap_volume_cm3 / stock_volume_cm3 * 100.0), 1) if stock_volume_cm3 > 0 else 0.0
+        )
 
         # Cost components
         material_cost = round(stock_mass_kg * cost_per_kg, 2)

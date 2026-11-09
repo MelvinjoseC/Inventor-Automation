@@ -30,11 +30,15 @@ def test_assembly_patterning(mock_inventor_app):
     engine = AssemblyAutomationEngine(mock_inventor_app)
 
     # Linear pattern
-    lin_pattern = engine.create_linear_occurrence_pattern(assembly_doc, occ, count_x=3, spacing_x_cm=5.0)
+    lin_pattern = engine.create_linear_occurrence_pattern(
+        assembly_doc, occ, count_x=3, spacing_x_cm=5.0
+    )
     assert cd.OccurrencePatterns.AddRectangularPattern.called
 
     # Circular pattern
-    circ_pattern = engine.create_circular_occurrence_pattern(assembly_doc, occ, count=6, angle_deg=360.0)
+    circ_pattern = engine.create_circular_occurrence_pattern(
+        assembly_doc, occ, count=6, angle_deg=360.0
+    )
     assert cd.OccurrencePatterns.AddCircularPattern.called
 
 
@@ -110,7 +114,9 @@ def test_drawing_auto_scale(mock_inventor_app):
 
 
 def test_cost_estimator():
-    estimator = CostEstimator(machining_hourly_rate=80.0, stock_allowance_cm=0.5, setup_minutes=15.0)
+    estimator = CostEstimator(
+        machining_hourly_rate=80.0, stock_allowance_cm=0.5, setup_minutes=15.0
+    )
 
     # 10x10x10 cm block (1000 cm3) in Aluminum 6061
     bbox = {"dx": 10.0, "dy": 10.0, "dz": 10.0}
@@ -122,7 +128,9 @@ def test_cost_estimator():
     assert cost_info["scrap_volume_cm3"] > 0
     assert cost_info["material_cost_usd"] > 0
     assert cost_info["machining_cost_usd"] > 0
-    assert cost_info["total_estimated_cost_usd"] == round(cost_info["material_cost_usd"] + cost_info["machining_cost_usd"], 2)
+    assert cost_info["total_estimated_cost_usd"] == round(
+        cost_info["material_cost_usd"] + cost_info["machining_cost_usd"], 2
+    )
 
 
 def test_yaml_bom_parsing(tmp_path):

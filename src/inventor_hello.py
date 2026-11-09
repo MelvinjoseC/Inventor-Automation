@@ -21,7 +21,7 @@ def main() -> None:
         app = conn.connect()
         version = getattr(getattr(app, "SoftwareVersion", None), "DisplayVersion", "Unknown")
         user_name = getattr(getattr(app, "GeneralOptions", None), "UserName", "Local User")
-        
+
         logger.info("==========================================")
         logger.info("✅ SUCCESS: Connected to Autodesk Inventor")
         logger.info(f"   Software Version : {version}")

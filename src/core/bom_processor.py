@@ -15,7 +15,16 @@ logger = logging.getLogger("InventorAutomation.BomProcessor")
 class BomItem:
     """Represents a validated Bill of Materials (BOM) item representing a part to automate."""
 
-    VALID_PRIMITIVES = {"block", "cylinder", "plate_with_holes", "tube", "hex_fastener", "l_bracket", "circular_flange", "stepped_shaft"}
+    VALID_PRIMITIVES = {
+        "block",
+        "cylinder",
+        "plate_with_holes",
+        "tube",
+        "hex_fastener",
+        "l_bracket",
+        "circular_flange",
+        "stepped_shaft",
+    }
 
     def __init__(self, data: Dict[str, Any], defaults: Dict[str, Any]):
         self.raw_data = data
@@ -39,7 +48,9 @@ class BomItem:
 
         self.chamfer_distance_cm: Optional[float] = None
         if "chamfer_distance" in data and data["chamfer_distance"] is not None:
-            self.chamfer_distance_cm = ConfigLoader.to_cm(float(data["chamfer_distance"]), self.unit)
+            self.chamfer_distance_cm = ConfigLoader.to_cm(
+                float(data["chamfer_distance"]), self.unit
+            )
 
         # Metadata
         self.material = str(data.get("material", defaults.get("material", "Steel, Mild"))).strip()
@@ -76,13 +87,19 @@ class BomItem:
                 self.thickness_cm = self.length_cm
 
             elif self.part_type == "tube":
-                od = float(data.get("outer_diameter", data.get("od", defaults.get("outer_diameter", 4.0))))
-                id_val = float(data.get("inner_diameter", data.get("id", defaults.get("inner_diameter", 2.0))))
+                od = float(
+                    data.get("outer_diameter", data.get("od", defaults.get("outer_diameter", 4.0)))
+                )
+                id_val = float(
+                    data.get("inner_diameter", data.get("id", defaults.get("inner_diameter", 2.0)))
+                )
                 length = float(data.get("length", defaults.get("length", 6.0)))
                 if od <= 0 or id_val <= 0 or length <= 0:
                     raise ValueError("Tube dimensions must be positive")
                 if id_val >= od:
-                    raise ValueError(f"Inner diameter ({id_val}) must be strictly less than outer ({od})")
+                    raise ValueError(
+                        f"Inner diameter ({id_val}) must be strictly less than outer ({od})"
+                    )
                 self.outer_diameter_cm = ConfigLoader.to_cm(od, self.unit)
                 self.inner_diameter_cm = ConfigLoader.to_cm(id_val, self.unit)
                 self.length_cm = ConfigLoader.to_cm(length, self.unit)
@@ -101,16 +118,22 @@ class BomItem:
                 self.height_cm = ConfigLoader.to_cm(h, self.unit)
                 self.thickness_cm = ConfigLoader.to_cm(t, self.unit)
                 self.hole_diameter_cm = ConfigLoader.to_cm(hd, self.unit)
-                
+
                 margin_x = data.get("hole_margin_x")
                 margin_y = data.get("hole_margin_y")
-                self.hole_margin_x_cm = ConfigLoader.to_cm(float(margin_x), self.unit) if margin_x is not None else None
-                self.hole_margin_y_cm = ConfigLoader.to_cm(float(margin_y), self.unit) if margin_y is not None else None
+                self.hole_margin_x_cm = (
+                    ConfigLoader.to_cm(float(margin_x), self.unit) if margin_x is not None else None
+                )
+                self.hole_margin_y_cm = (
+                    ConfigLoader.to_cm(float(margin_y), self.unit) if margin_y is not None else None
+                )
                 self.corner_holes = bool(data.get("corner_holes", True))
                 self.center_hole = bool(data.get("center_hole", False))
 
             elif self.part_type == "hex_fastener":
-                flats = float(data.get("across_flats", data.get("flats", defaults.get("across_flats", 1.8))))
+                flats = float(
+                    data.get("across_flats", data.get("flats", defaults.get("across_flats", 1.8)))
+                )
                 head_h = float(data.get("head_height", defaults.get("head_height", 0.8)))
                 shank_d = float(data.get("shank_diameter", defaults.get("shank_diameter", 1.0)))
                 shank_l = float(data.get("shank_length", defaults.get("shank_length", 4.0)))
@@ -151,7 +174,10 @@ class BomItem:
 
             elif self.part_type == "stepped_shaft":
                 raw_steps = data.get("steps", defaults.get("steps", [[2.0, 5.0], [1.5, 3.0]]))
-                self.steps = [(ConfigLoader.to_cm(s[0], self.unit), ConfigLoader.to_cm(s[1], self.unit)) for s in raw_steps]
+                self.steps = [
+                    (ConfigLoader.to_cm(s[0], self.unit), ConfigLoader.to_cm(s[1], self.unit))
+                    for s in raw_steps
+                ]
                 max_d = max(s[0] for s in self.steps)
                 total_l = sum(s[1] for s in self.steps)
                 self.width_cm = max_d
@@ -163,7 +189,9 @@ class BomItem:
                 h = float(data.get("height", defaults.get("height", 1.0)))
                 t = float(data.get("thickness", defaults.get("thickness", 0.5)))
                 if w <= 0 or h <= 0 or t <= 0:
-                    raise ValueError(f"Dimensions must be positive values. Part: {self.part_number}")
+                    raise ValueError(
+                        f"Dimensions must be positive values. Part: {self.part_number}"
+                    )
                 self.width_cm = ConfigLoader.to_cm(w, self.unit)
                 self.height_cm = ConfigLoader.to_cm(h, self.unit)
                 self.thickness_cm = ConfigLoader.to_cm(t, self.unit)
@@ -201,7 +229,9 @@ class BomItem:
         }
 
     def __repr__(self) -> str:
-        return f"<BomItem {self.part_number} ({self.name}) [{self.part_type}]: {self.width_cm}x{self.height_cm}x{self.thickness_cm}cm>"
+        return (
+            f"<BomItem {self.part_number}: {self.width_cm}x{self.height_cm}x{self.thickness_cm}cm>"
+        )
 
 
 class BomProcessor:
@@ -226,7 +256,7 @@ class BomProcessor:
         elif suffix in [".yaml", ".yml"]:
             raw_items = self._parse_yaml(path)
         else:
-            raise ValueError(f"Unsupported BOM file format '{suffix}'. Use .json, .csv, or .yaml.")
+            raise ValueError(f"Unsupported BOM format '{suffix}'. Use .json, .csv, or .yaml.")
 
         return self.parse_data(raw_items)
 
@@ -242,7 +272,9 @@ class BomProcessor:
             except Exception as e:
                 logger.warning(f"Skipping invalid BOM item at index {index} ({part_no}): {e}")
 
-        logger.info(f"Successfully validated {len(validated_items)} of {len(raw_items)} items from BOM.")
+        logger.info(
+            f"Successfully validated {len(validated_items)} of {len(raw_items)} items from BOM."
+        )
         return validated_items
 
     def _parse_json(self, path: Path) -> List[Dict[str, Any]]:
@@ -253,7 +285,9 @@ class BomProcessor:
             elif isinstance(data, dict) and "parts" in data:
                 return data["parts"]
             else:
-                logger.warning("JSON format not standard. Expecting a list or object with 'parts' array.")
+                logger.warning(
+                    "JSON format not standard. Expecting a list or object with 'parts' array."
+                )
                 return [data]
 
     def _parse_csv(self, path: Path) -> List[Dict[str, Any]]:

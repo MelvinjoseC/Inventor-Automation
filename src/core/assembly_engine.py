@@ -114,12 +114,13 @@ class AssemblyAutomationEngine:
         try:
             logger.debug(f"Adding Insert constraint with distance {distance_cm}cm")
             cd = assembly_doc.ComponentDefinition
-            constraint = cd.Constraints.AddInsertConstraint(entity1, entity2, axes_opposed, distance_cm)
+            constraint = cd.Constraints.AddInsertConstraint(
+                entity1, entity2, axes_opposed, distance_cm
+            )
             return constraint
         except Exception as e:
             logger.warning(f"Could not apply Insert constraint: {e}")
             return None
-
 
     def create_linear_occurrence_pattern(
         self,
@@ -193,7 +194,9 @@ class AssemblyAutomationEngine:
             axis_entity: Centerline axis entity (defaults to Z WorkAxis).
         """
         try:
-            logger.info(f"Creating circular occurrence pattern: Count={count}, Angle={angle_deg} deg")
+            logger.info(
+                f"Creating circular occurrence pattern: Count={count}, Angle={angle_deg} deg"
+            )
             cd = assembly_doc.ComponentDefinition
             patterns = getattr(cd, "OccurrencePatterns", None)
 
@@ -251,11 +254,12 @@ class AssemblyAutomationEngine:
                     }
 
             summary = list(parts_count.values())
-            logger.info(f"Assembly BOM extracted: {len(summary)} unique parts, {occurrences.Count} total occurrences.")
+            logger.info(
+                f"Assembly BOM extracted: {len(summary)} unique parts, {occurrences.Count} total occurrences."
+            )
         except Exception as e:
             logger.warning(f"Failed to extract assembly BOM summary: {e}")
         return summary
-
 
     def check_interference(self, assembly_doc: Any) -> Dict[str, Any]:
         """Runs automated 3D interference and collision analysis across all occurrences in the assembly.
@@ -302,17 +306,25 @@ class AssemblyAutomationEngine:
                     occ2_name = getattr(getattr(res, "OccurrenceTwo", None), "Name", "Unknown_2")
                     centroid_pt = getattr(res, "Centroid", None)
                     centroid = {
-                        "x": round(float(getattr(centroid_pt, "X", 0.0)), 3) if centroid_pt else 0.0,
-                        "y": round(float(getattr(centroid_pt, "Y", 0.0)), 3) if centroid_pt else 0.0,
-                        "z": round(float(getattr(centroid_pt, "Z", 0.0)), 3) if centroid_pt else 0.0,
+                        "x": (
+                            round(float(getattr(centroid_pt, "X", 0.0)), 3) if centroid_pt else 0.0
+                        ),
+                        "y": (
+                            round(float(getattr(centroid_pt, "Y", 0.0)), 3) if centroid_pt else 0.0
+                        ),
+                        "z": (
+                            round(float(getattr(centroid_pt, "Z", 0.0)), 3) if centroid_pt else 0.0
+                        ),
                     }
 
-                    report["interferences"].append({
-                        "occurrence_1": occ1_name,
-                        "occurrence_2": occ2_name,
-                        "volume_cm3": vol,
-                        "centroid": centroid,
-                    })
+                    report["interferences"].append(
+                        {
+                            "occurrence_1": occ1_name,
+                            "occurrence_2": occ2_name,
+                            "volume_cm3": vol,
+                            "centroid": centroid,
+                        }
+                    )
 
                 report["total_interference_volume_cm3"] = round(total_vol, 4)
                 if report["has_interference"]:

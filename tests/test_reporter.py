@@ -5,7 +5,7 @@ from src.core.reporter import RunReporter
 
 def test_reporter_generation(tmp_path):
     reporter = RunReporter("Factory Automation Run #42")
-    
+
     reporter.add_result(
         part_number="P-001",
         name="Main Bracket",

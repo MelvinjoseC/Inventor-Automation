@@ -144,11 +144,15 @@ def test_primitive_validation_errors(mock_inventor_app):
 
     # L-bracket thickness >= leg
     with pytest.raises(ValueError):
-        engine.create_l_bracket(part_doc, leg1_length_cm=2.0, leg2_length_cm=2.0, width_cm=1.0, thickness_cm=2.5)
+        engine.create_l_bracket(
+            part_doc, leg1_length_cm=2.0, leg2_length_cm=2.0, width_cm=1.0, thickness_cm=2.5
+        )
 
     # Flange inner >= outer
     with pytest.raises(ValueError):
-        engine.create_circular_flange(part_doc, outer_diameter_cm=5.0, inner_diameter_cm=6.0, thickness_cm=1.0, pcd_cm=5.5)
+        engine.create_circular_flange(
+            part_doc, outer_diameter_cm=5.0, inner_diameter_cm=6.0, thickness_cm=1.0, pcd_cm=5.5
+        )
 
     # Stepped shaft empty
     with pytest.raises(ValueError):

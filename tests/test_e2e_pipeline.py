@@ -108,7 +108,11 @@ def test_full_e2e_automation_pipeline(tmp_path):
             cd.MassProperties = mass_props
             rb = MagicMock()
             rb.MinPoint.X, rb.MinPoint.Y, rb.MinPoint.Z = 0.0, 0.0, 0.0
-            rb.MaxPoint.X, rb.MaxPoint.Y, rb.MaxPoint.Z = item.width_cm, item.height_cm, item.thickness_cm
+            rb.MaxPoint.X, rb.MaxPoint.Y, rb.MaxPoint.Z = (
+                item.width_cm,
+                item.height_cm,
+                item.thickness_cm,
+            )
             cd.RangeBox = rb
 
             # Model feature
@@ -116,8 +120,12 @@ def test_full_e2e_automation_pipeline(tmp_path):
                 engine.create_cylinder(part_doc, item.diameter_cm, item.length_cm, item.material)
             elif item.part_type == "plate_with_holes":
                 engine.create_plate_with_holes(
-                    part_doc, item.width_cm, item.height_cm, item.thickness_cm,
-                    item.hole_diameter_cm, material=item.material
+                    part_doc,
+                    item.width_cm,
+                    item.height_cm,
+                    item.thickness_cm,
+                    item.hole_diameter_cm,
+                    material=item.material,
                 )
 
             # Quality Check
@@ -126,7 +134,9 @@ def test_full_e2e_automation_pipeline(tmp_path):
 
             # Export batch
             export_formats = ["pdf", "step", "stl"]
-            exports = exporter.export_batch(part_doc, item.part_number, tmp_path / "exports", export_formats)
+            exports = exporter.export_batch(
+                part_doc, item.part_number, tmp_path / "exports", export_formats
+            )
             assert len(exports) == 3
 
             # Record in Reporter

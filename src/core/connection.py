@@ -35,7 +35,7 @@ class COMErrorHelper:
 
 class TransactionContext:
     """Manages an atomic Inventor transaction.
-    
+
     If an error occurs within the context block, the transaction is automatically aborted,
     rolling back the document state to prevent corruption.
     """
@@ -142,7 +142,9 @@ class InventorConnectionManager:
                     logger.info("Successfully attached to a running Autodesk Inventor instance.")
                 except Exception:
                     # If attachment fails, try dispatching a new instance
-                    logger.info("No running instance detected. Dispatched new Inventor application.")
+                    logger.info(
+                        "No running instance detected. Dispatched new Inventor application."
+                    )
                     try:
                         self.app = gencache.EnsureDispatch(self.PROGID)
                     except Exception as e_dispatch:

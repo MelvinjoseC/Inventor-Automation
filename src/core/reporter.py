@@ -26,16 +26,18 @@ class RunReporter:
         exports: Optional[List[str]] = None,
     ) -> None:
         """Records the outcome of a single part or assembly automation task."""
-        self.results.append({
-            "part_number": part_number,
-            "name": name,
-            "part_type": part_type,
-            "mass_kg": mass_kg,
-            "volume_cm3": volume_cm3,
-            "drc_passed": drc_passed,
-            "drc_details": drc_details,
-            "exports": exports or [],
-        })
+        self.results.append(
+            {
+                "part_number": part_number,
+                "name": name,
+                "part_type": part_type,
+                "mass_kg": mass_kg,
+                "volume_cm3": volume_cm3,
+                "drc_passed": drc_passed,
+                "drc_details": drc_details,
+                "exports": exports or [],
+            }
+        )
 
     @property
     def total_count(self) -> int:
@@ -59,7 +61,7 @@ class RunReporter:
             "",
             f"**Run Status**: {status_badge}  ",
             f"**Execution Timestamp**: `{timestamp}`  ",
-            f"**Total Parts Processed**: {self.total_count} | **Passed**: {self.passed_count} | **Failed**: {self.failed_count}",
+            f"**Processed**: {self.total_count} | **Passed**: {self.passed_count} | **Failed**: {self.failed_count}",
             "",
             "## Summary Table",
             "",
@@ -75,7 +77,9 @@ class RunReporter:
                 f"{r['mass_kg']:.3f} | {r['volume_cm3']:.2f} | {drc_icon} | {exports_str} |"
             )
 
-        lines.extend(["", "---", "*Generated automatically by Autodesk Inventor Automation Engine.*"])
+        lines.extend(
+            ["", "---", "*Generated automatically by Autodesk Inventor Automation Engine.*"]
+        )
         md_content = "\n".join(lines)
 
         if output_path:
@@ -96,7 +100,9 @@ class RunReporter:
         for r in self.results:
             badge_class = "badge-pass" if r["drc_passed"] else "badge-fail"
             badge_text = "PASS" if r["drc_passed"] else "FAIL"
-            exports_badges = "".join([f'<span class="badge-export">{e.upper()}</span>' for e in r["exports"]])
+            exports_badges = "".join(
+                [f'<span class="badge-export">{e.upper()}</span>' for e in r["exports"]]
+            )
             rows_html += f"""
             <tr>
                 <td><strong>{r['part_number']}</strong></td>

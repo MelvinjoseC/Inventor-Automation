@@ -313,3 +313,56 @@ class DrawingGenerator:
         except Exception as e:
             logger.debug(f"Could not automatically place center marks: {e}")
         return count
+
+    def calculate_auto_scale(self, sheet: Any, part_doc: Any) -> float:
+        """Calculates optimal engineering view scale (e.g. 1:2, 1:1, 2:1) based on model bounds and sheet size."""
+        try:
+            cd = getattr(part_doc, "ComponentDefinition", None)
+            range_box = getattr(cd, "RangeBox", None)
+            if range_box:
+                min_pt = range_box.MinPoint
+                max_pt = range_box.MaxPoint
+                dx = abs(float(max_pt.X) - float(min_pt.X))
+                dy = abs(float(max_pt.Y) - float(min_pt.Y))
+                dz = abs(float(max_pt.Z) - float(min_pt.Z))
+                max_model_dim = max(dx, dy, dz)
+
+                sheet_w = float(sheet.Width)
+                sheet_h = float(sheet.Height)
+                target_span = min(sheet_w, sheet_h) * 0.35
+
+                if max_model_dim > 0:
+                    raw_ratio = target_span / max_model_dim
+                    standard_scales = [0.05, 0.1, 0.2, 0.25, 0.5, 1.0, 2.0, 4.0, 5.0, 10.0]
+                    fitting = [s for s in standard_scales if s <= raw_ratio]
+                    return fitting[-1] if fitting else standard_scales[0]
+        except Exception as e:
+            logger.debug(f"Scale calculation fallback: {e}")
+        return 1.0
+
+    def _add_overall_dimensions(self, sheet: Any, base_view: Any) -> int:
+        """Places overall bounding dimensions on the primary drawing view."""
+        dim_count = 0
+        try:
+            dims = getattr(sheet, "DrawingDimensions", None)
+            gen_dims = getattr(dims, "GeneralDimensions", None)
+            if not gen_dims or not hasattr(gen_dims, "AddLinear"):
+                return 0
+
+            curves = getattr(base_view, "DrawingCurves", None)
+            if curves and curves.Count >= 2:
+                intent1 = sheet.CreateGeometryIntent(curves.Item(1))
+                intent2 = sheet.CreateGeometryIntent(curves.Item(curves.Count))
+
+                # Placement point below base view
+                center_y = getattr(base_view.Center, "Y", 10.0)
+                center_x = getattr(base_view.Center, "X", 10.0)
+                height = getattr(base_view, "Height", 5.0)
+                dim_pos = self.tg.CreatePoint2d(center_x, center_y - (height / 2.0) - 1.5)
+
+                gen_dims.AddLinear(dim_pos, intent1, intent2)
+                dim_count += 1
+                logger.info("Overall horizontal dimension placed on base view.")
+        except Exception as e:
+            logger.debug(f"Could not place automated dimensions: {e}")
+        return dim_count

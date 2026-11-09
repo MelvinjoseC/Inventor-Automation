@@ -12,6 +12,7 @@ from automation import InventorAutomationEngine
 from core.assembly_engine import AssemblyAutomationEngine
 from core.bom_processor import BomItem, BomProcessor
 from core.config_loader import ConfigLoader
+from core.cost_estimator import CostEstimator
 from core.connection import InventorConnectionManager, PerformanceMode, TransactionContext
 from core.drawing_generator import DrawingGenerator
 from core.exporter import InventorExporter
@@ -53,7 +54,7 @@ def parse_args() -> argparse.Namespace:
         "generate-part",
         help="Generate a parametric 3D part (block, cylinder, plate_with_holes, tube) with drawings and exports.",
     )
-    part_parser.add_argument("--type", type=str, default="block", choices=["block", "cylinder", "plate_with_holes", "tube"], help="Part primitive geometry type")
+    part_parser.add_argument("--type", type=str, default="block", choices=["block", "cylinder", "plate_with_holes", "tube", "hex_fastener", "l_bracket", "circular_flange"], help="Part primitive geometry type")
     part_parser.add_argument("--unit", type=str, default="cm", choices=["mm", "cm", "in"], help="Dimensional unit")
     part_parser.add_argument("--width", type=float, help="Part width")
     part_parser.add_argument("--height", type=float, help="Part height")
@@ -125,6 +126,31 @@ def parse_args() -> argparse.Namespace:
     )
     export_parser.add_argument("--file", type=str, required=True, help="Path to Inventor source file")
     export_parser.add_argument("--formats", type=str, default="step,stl,pdf,dwg", help="Target formats")
+
+    # Command: Check Interference
+    interf_parser = subparsers.add_parser(
+        "check-interference",
+        help="Run 3D collision and interference analysis on an assembly document (.iam).",
+    )
+    interf_parser.add_argument("--assembly", type=str, required=True, help="Path to .iam assembly file")
+
+    # Command: Estimate Cost
+    cost_parser = subparsers.add_parser(
+        "estimate-cost",
+        help="Estimate raw stock billet requirements, scrap chip volume, machining time, and fabrication cost.",
+    )
+    cost_parser.add_argument("--file", type=str, required=True, help="Path to .ipt part file")
+    cost_parser.add_argument("--material", type=str, default="Steel, Mild", help="Material name")
+    cost_parser.add_argument("--hourly-rate", type=float, default=75.0, help="Machine shop rate ($/hr)")
+
+    # Command: Bundle Release
+    bundle_parser = subparsers.add_parser(
+        "bundle-release",
+        help="Assemble CAD deliverables and reports into a versioned release ZIP with SHA-256 verification manifest.",
+    )
+    bundle_parser.add_argument("--name", type=str, required=True, help="Release package base name")
+    bundle_parser.add_argument("--files", type=str, required=True, help="Comma-separated list of deliverable file paths")
+    bundle_parser.add_argument("--output-dir", type=str, default="releases", help="Target directory for release bundle")
 
     return parser.parse_args()
 
@@ -252,6 +278,24 @@ def handle_process_bom(args: argparse.Namespace, config: ConfigLoader, app: Any)
                             item.hole_diameter_cm, item.hole_margin_x_cm, item.hole_margin_y_cm,
                             item.corner_holes, item.center_hole, item.material, item.color,
                         )
+                    elif item.part_type == "hex_fastener":
+                        engine.create_hex_fastener(
+                            part_doc, item.across_flats_cm, item.head_height_cm,
+                            item.shank_diameter_cm, item.shank_length_cm, item.material, item.color,
+                        )
+                    elif item.part_type == "l_bracket":
+                        engine.create_l_bracket(
+                            part_doc, item.leg1_length_cm, item.leg2_length_cm,
+                            item.width_cm, item.thickness_cm, item.material, item.color,
+                        )
+                    elif item.part_type == "circular_flange":
+                        engine.create_circular_flange(
+                            part_doc, item.outer_diameter_cm, item.inner_diameter_cm,
+                            item.thickness_cm, item.pcd_cm, item.bolt_count,
+                            item.bolt_hole_diameter_cm, item.material, item.color,
+                        )
+                    elif item.part_type == "stepped_shaft":
+                        engine.create_stepped_shaft(part_doc, item.steps, item.material, item.color)
                     else:
                         engine.create_block(part_doc, item.width_cm, item.height_cm, item.thickness_cm, item.material, item.color)
 
@@ -371,6 +415,74 @@ def handle_export_batch(args: argparse.Namespace, config: ConfigLoader, app: Any
         doc.Close(True)
 
 
+def handle_check_interference(args: argparse.Namespace, config: ConfigLoader, app: Any) -> None:
+    path = Path(args.assembly).expanduser().resolve()
+    if not path.exists():
+        raise FileNotFoundError(f"Assembly file not found: {path}")
+
+    doc = app.Documents.Open(str(path))
+    try:
+        engine = AssemblyAutomationEngine(app)
+        report = engine.check_interference(doc)
+
+        print("\n=== 3D Assembly Interference Report ===")
+        print(f"File: {path.name}")
+        print(f"Collision Detected: {'YES (COLLISION WARNING)' if report['has_interference'] else 'NO (CLEAR)'}")
+        print(f"Total Interferences: {report['interference_count']}")
+        print(f"Total Interference Volume: {report['total_interference_volume_cm3']} cm³")
+
+        for idx, inter in enumerate(report["interferences"], 1):
+            print(f"  [{idx}] {inter['occurrence_1']} <--> {inter['occurrence_2']}: {inter['volume_cm3']} cm³ at {inter['centroid']}")
+    finally:
+        doc.Close(True)
+
+
+def handle_estimate_cost(args: argparse.Namespace, config: ConfigLoader, app: Any) -> None:
+    path = Path(args.file).expanduser().resolve()
+    if not path.exists():
+        raise FileNotFoundError(f"Part file not found: {path}")
+
+    doc = app.Documents.Open(str(path))
+    try:
+        inspector = ModelInspector(app, config.inspection_settings)
+        props = inspector.get_physical_properties(doc)
+
+        estimator = CostEstimator(machining_hourly_rate=args.hourly_rate)
+        cost_report = estimator.estimate_part_cost(
+            bounding_box_cm=props["bounding_box_cm"],
+            finished_volume_cm3=props["volume_cm3"],
+            material_name=args.material,
+        )
+
+        print("\n=== Manufacturing Cost & Stock Estimation ===")
+        print(f"Part: {path.name} | Material: {cost_report['material']}")
+        dims = cost_report['stock_dimensions_cm']
+        print(f"Required Stock Billet: {dims['dx']} x {dims['dy']} x {dims['dz']} cm ({cost_report['stock_volume_cm3']} cm³, {cost_report['stock_mass_kg']} kg)")
+        print(f"Finished Part Mass: {cost_report['finished_mass_kg']} kg | Scrap Volume: {cost_report['scrap_volume_cm3']} cm³ ({cost_report['material_removal_percentage']}%)")
+        print(f"Estimated Machining Time: {cost_report['machining_time_minutes']} min")
+        print(f"Raw Material Cost: ${cost_report['material_cost_usd']:.2f}")
+        print(f"Machining Cost: ${cost_report['machining_cost_usd']:.2f}")
+        print(f"Total Estimated Fabrication Cost: ${cost_report['total_estimated_cost_usd']:.2f}")
+    finally:
+        doc.Close(True)
+
+
+def handle_bundle_release(args: argparse.Namespace) -> None:
+    file_paths = [Path(f.strip()) for f in args.files.split(",") if f.strip()]
+    exporter = InventorExporter(app=None)
+    out_dir = Path(args.output_dir)
+    zip_path, manifest = exporter.create_manufacturing_bundle(
+        bundle_name=args.name,
+        files_to_pack=file_paths,
+        output_dir=out_dir,
+    )
+    print(f"\n=== Manufacturing Release Bundle Created ===")
+    print(f"Archive: {zip_path}")
+    print(f"Verified Files: {manifest['file_count']}")
+    for f in manifest["files"]:
+        print(f"  - {f['name']} ({f['size_bytes']} bytes) SHA-256: {f['sha256'][:16]}...")
+
+
 def main() -> None:
     args = parse_args()
     config = ConfigLoader(args.config)
@@ -396,6 +508,10 @@ def main() -> None:
                 sys.exit(1)
         sys.exit(0)
 
+    if args.command == "bundle-release":
+        handle_bundle_release(args)
+        sys.exit(0)
+
     if not args.command:
         logger.error("No sub-command supplied. Use -h or --help for instructions.")
         sys.exit(1)
@@ -418,6 +534,10 @@ def main() -> None:
                 handle_inspect(args, config, app)
             elif args.command == "export-batch":
                 handle_export_batch(args, config, app)
+            elif args.command == "check-interference":
+                handle_check_interference(args, config, app)
+            elif args.command == "estimate-cost":
+                handle_estimate_cost(args, config, app)
     except Exception as e:
         logger.critical(f"Execution failed due to connection or COM errors: {e}", exc_info=True)
         sys.exit(1)

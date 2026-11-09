@@ -255,3 +255,75 @@ class AssemblyAutomationEngine:
         except Exception as e:
             logger.warning(f"Failed to extract assembly BOM summary: {e}")
         return summary
+
+
+    def check_interference(self, assembly_doc: Any) -> Dict[str, Any]:
+        """Runs automated 3D interference and collision analysis across all occurrences in the assembly.
+
+        Returns:
+            Dictionary with overall status, count, total collision volume, and per-collision pair details.
+        """
+        report: Dict[str, Any] = {
+            "has_interference": False,
+            "interference_count": 0,
+            "total_interference_volume_cm3": 0.0,
+            "interferences": [],
+        }
+
+        try:
+            logger.info("Executing automated interference detection...")
+            cd = assembly_doc.ComponentDefinition
+            occurrences = cd.Occurrences
+
+            if occurrences.Count < 2:
+                logger.info("Assembly contains fewer than 2 components; no collision possible.")
+                return report
+
+            # Build collection of occurrences
+            occ_collection = self.app.TransientObjects.CreateObjectCollection()
+            for i in range(1, occurrences.Count + 1):
+                occ_collection.Add(occurrences.Item(i))
+
+            results = None
+            if hasattr(cd, "AnalyzeInterference"):
+                results = cd.AnalyzeInterference(occ_collection)
+
+            if results:
+                count = getattr(results, "Count", 0)
+                report["interference_count"] = count
+                report["has_interference"] = count > 0
+
+                total_vol = 0.0
+                for i in range(1, count + 1):
+                    res = results.Item(i)
+                    vol = round(float(getattr(res, "Volume", 0.0)), 4)
+                    total_vol += vol
+                    occ1_name = getattr(getattr(res, "OccurrenceOne", None), "Name", "Unknown_1")
+                    occ2_name = getattr(getattr(res, "OccurrenceTwo", None), "Name", "Unknown_2")
+                    centroid_pt = getattr(res, "Centroid", None)
+                    centroid = {
+                        "x": round(float(getattr(centroid_pt, "X", 0.0)), 3) if centroid_pt else 0.0,
+                        "y": round(float(getattr(centroid_pt, "Y", 0.0)), 3) if centroid_pt else 0.0,
+                        "z": round(float(getattr(centroid_pt, "Z", 0.0)), 3) if centroid_pt else 0.0,
+                    }
+
+                    report["interferences"].append({
+                        "occurrence_1": occ1_name,
+                        "occurrence_2": occ2_name,
+                        "volume_cm3": vol,
+                        "centroid": centroid,
+                    })
+
+                report["total_interference_volume_cm3"] = round(total_vol, 4)
+                if report["has_interference"]:
+                    logger.warning(
+                        f"Interference detected! {count} collisions found, "
+                        f"Total volume = {report['total_interference_volume_cm3']} cm³"
+                    )
+                else:
+                    logger.info("Zero interference detected across all assembly components.")
+
+        except Exception as e:
+            logger.warning(f"Interference analysis encountered an exception: {e}")
+
+        return report

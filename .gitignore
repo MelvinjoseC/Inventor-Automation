@@ -44,6 +44,7 @@ env/
 htmlcov/
 .tosca/
 .pytest_cache/
+.mypy_cache/
 .coverage
 .coverage.*
 .cache
@@ -51,6 +52,7 @@ nosetests.xml
 coverage.xml
 *.cover
 .hypothesis/
+reports/
 
 # Inventor Automation Output files (desktop output redirects)
 logs/
@@ -58,6 +60,8 @@ Desktop/
 **/output/
 **/drawings/
 **/exports/
+**/releases/
+*.zip
 *.ipt
 *.iam
 *.idw

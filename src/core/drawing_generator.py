@@ -77,8 +77,12 @@ class DrawingGenerator:
         assembly_name: str,
         revision: str = "A",
         include_parts_list: bool = True,
+        include_balloons: bool = True,
+        include_revision_table: bool = True,
     ) -> Any:
-        """Creates an assembly drawing sheet with orthographic views, isometric view, and automatic Parts List."""
+        """Creates an assembly drawing sheet with orthographic views, isometric view, automatic Parts List,
+        balloon annotations, and revision tracking table.
+        """
         try:
             logger.info(f"Generating assembly drawing for {assembly_number} ({assembly_name})...")
             self._update_part_properties(assembly_doc, assembly_number, assembly_name, revision)
@@ -97,14 +101,91 @@ class DrawingGenerator:
             base_view = self._place_views(sheet, assembly_doc)
 
             # Insert Parts List (Drawing BOM Table)
+            parts_list = None
             if include_parts_list and base_view:
-                self._add_parts_list(sheet, base_view)
+                parts_list = self._add_parts_list(sheet, base_view)
+
+            # Automated Item Balloons
+            if include_balloons and base_view:
+                self._add_balloons(sheet, base_view)
+
+            # Revision History Table
+            if include_revision_table:
+                self._add_revision_table(sheet, revision=revision)
 
             logger.info(f"Successfully generated assembly drawing for {assembly_number}")
             return drawing_doc
         except Exception as e:
             logger.error(f"Failed to generate assembly drawing: {e}")
             raise
+
+    def _add_balloons(self, sheet: Any, base_view: Any) -> int:
+        """Places item callout balloons on the drawing sheet referencing the assembly parts list."""
+        balloon_count = 0
+        try:
+            balloons = getattr(sheet, "Balloons", None)
+            if not balloons:
+                return 0
+
+            # Attempt native AutoBalloon if supported
+            if hasattr(balloons, "AutoBalloon"):
+                curves = getattr(base_view, "DrawingCurves", None)
+                if curves and curves.Count > 0:
+                    leader_points = self.tg.CreatePoint2d(base_view.Center.X + 6.0, base_view.Center.Y + 4.0)
+                    balloons.AutoBalloon(base_view, leader_points)
+                    logger.info("Auto-ballooning applied across assembly views.")
+                    return 1
+
+            # Fallback: manual placement for candidate curves
+            curves = getattr(base_view, "DrawingCurves", None)
+            if curves and hasattr(balloons, "Add"):
+                limit = min(curves.Count + 1, 6)
+                for i in range(1, limit):
+                    curve = curves.Item(i)
+                    try:
+                        intent = sheet.CreateGeometryIntent(curve)
+                        pos = self.tg.CreatePoint2d(base_view.Center.X + (i * 2.0), base_view.Center.Y + 3.0)
+                        balloons.Add(intent, pos)
+                        balloon_count += 1
+                    except Exception:
+                        continue
+            logger.info(f"Added {balloon_count} item balloons to sheet.")
+        except Exception as e:
+            logger.debug(f"Could not automatically place balloons: {e}")
+        return balloon_count
+
+    def _add_revision_table(
+        self,
+        sheet: Any,
+        revision: str = "A",
+        description: str = "Automated Production Release",
+    ) -> Optional[Any]:
+        """Inserts an engineering revision tracking table onto the drawing sheet."""
+        try:
+            rev_tables = getattr(sheet, "RevisionTables", None)
+            if not rev_tables or not hasattr(rev_tables, "Add"):
+                return None
+
+            pos = self.tg.CreatePoint2d(2.0, float(sheet.Height) - 2.0)
+            rev_table = rev_tables.Add(pos)
+
+            # Populate revision entry
+            try:
+                rows = rev_table.RevisionTableRows
+                if rows.Count > 0:
+                    last_row = rows.Item(rows.Count)
+                    if hasattr(last_row, "Item"):
+                        # Set Revision Tag, Description, Approved
+                        last_row.Item("REV").Text = revision
+                        last_row.Item("DESCRIPTION").Text = description
+            except Exception:
+                pass
+
+            logger.info(f"Revision table (Rev {revision}) inserted on drawing sheet.")
+            return rev_table
+        except Exception as e:
+            logger.debug(f"Could not automatically place revision table: {e}")
+            return None
 
     def _add_parts_list(self, sheet: Any, base_view: Any) -> Optional[Any]:
         """Inserts a structured Parts List table onto the top-right corner of the drawing sheet."""

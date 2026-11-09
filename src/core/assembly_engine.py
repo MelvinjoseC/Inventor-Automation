@@ -120,6 +120,104 @@ class AssemblyAutomationEngine:
             logger.warning(f"Could not apply Insert constraint: {e}")
             return None
 
+
+    def create_linear_occurrence_pattern(
+        self,
+        assembly_doc: Any,
+        occurrence: Any,
+        count_x: int,
+        spacing_x_cm: float,
+        count_y: int = 1,
+        spacing_y_cm: float = 0.0,
+    ) -> Any:
+        """Creates a 1D or 2D rectangular array pattern of an assembly component occurrence.
+
+        Args:
+            assembly_doc: Target AssemblyDocument.
+            occurrence: Source component occurrence to pattern.
+            count_x: Number of instances along primary direction.
+            spacing_x_cm: Spacing distance in centimeters along primary direction.
+            count_y: Number of instances along secondary direction.
+            spacing_y_cm: Spacing distance in centimeters along secondary direction.
+        """
+        try:
+            logger.info(
+                f"Creating linear occurrence pattern: CountX={count_x}, SpacingX={spacing_x_cm}cm, "
+                f"CountY={count_y}, SpacingY={spacing_y_cm}cm"
+            )
+            cd = assembly_doc.ComponentDefinition
+            patterns = getattr(cd, "OccurrencePatterns", None)
+
+            # Collection of elements to pattern
+            elements = self.app.TransientObjects.CreateObjectCollection()
+            elements.Add(occurrence)
+
+            # Default work axes for direction (WorkAxes 1=X, 2=Y)
+            x_axis = cd.WorkAxes.Item(1)
+            y_axis = cd.WorkAxes.Item(2)
+
+            pattern = None
+            if patterns and hasattr(patterns, "AddRectangularPattern"):
+                pattern = patterns.AddRectangularPattern(
+                    elements,
+                    x_axis,
+                    True,
+                    count_x,
+                    spacing_x_cm,
+                    y_axis,
+                    True,
+                    count_y,
+                    spacing_y_cm,
+                )
+            logger.info("Linear occurrence pattern created successfully.")
+            return pattern
+        except Exception as e:
+            logger.warning(f"Could not create native linear occurrence pattern: {e}")
+            return None
+
+    def create_circular_occurrence_pattern(
+        self,
+        assembly_doc: Any,
+        occurrence: Any,
+        count: int,
+        angle_deg: float = 360.0,
+        axis_entity: Optional[Any] = None,
+    ) -> Any:
+        """Creates a circular polar array pattern of an assembly component occurrence.
+
+        Args:
+            assembly_doc: Target AssemblyDocument.
+            occurrence: Source component occurrence to pattern.
+            count: Total quantity of instances around the circumference.
+            angle_deg: Total sweep angle in degrees (default 360.0).
+            axis_entity: Centerline axis entity (defaults to Z WorkAxis).
+        """
+        try:
+            logger.info(f"Creating circular occurrence pattern: Count={count}, Angle={angle_deg} deg")
+            cd = assembly_doc.ComponentDefinition
+            patterns = getattr(cd, "OccurrencePatterns", None)
+
+            elements = self.app.TransientObjects.CreateObjectCollection()
+            elements.Add(occurrence)
+
+            axis = axis_entity if axis_entity is not None else cd.WorkAxes.Item(3)
+            angle_rad = f"{angle_deg} deg"
+
+            pattern = None
+            if patterns and hasattr(patterns, "AddCircularPattern"):
+                pattern = patterns.AddCircularPattern(
+                    elements,
+                    axis,
+                    True,
+                    count,
+                    angle_rad,
+                )
+            logger.info("Circular occurrence pattern created successfully.")
+            return pattern
+        except Exception as e:
+            logger.warning(f"Could not create native circular occurrence pattern: {e}")
+            return None
+
     def get_assembly_bom_summary(self, assembly_doc: Any) -> List[Dict[str, Any]]:
         """Extracts structured occurrence hierarchy and component counts from the assembly."""
         summary: List[Dict[str, Any]] = []

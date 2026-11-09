@@ -1,6 +1,10 @@
+import zipfile
+import json
+import hashlib
+import datetime
 import logging
 from pathlib import Path
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Optional, Tuple
 from win32com.client import CastTo, constants
 
 logger = logging.getLogger("InventorAutomation.Exporter")
@@ -192,3 +196,74 @@ class InventorExporter:
         except Exception as e:
             logger.error(f"Translation/Export failed for {target}: {e}")
             raise RuntimeError(f"Export failed: {e}") from e
+
+
+    @staticmethod
+    def compute_sha256(file_path: Path) -> str:
+        """Calculates SHA-256 cryptographic checksum of a file."""
+        hasher = hashlib.sha256()
+        with open(file_path, "rb") as f:
+            for chunk in iter(lambda: f.read(65536), b""):
+                hasher.update(chunk)
+        return hasher.hexdigest()
+
+    def create_manufacturing_bundle(
+        self,
+        bundle_name: str,
+        files_to_pack: List[Path],
+        output_dir: Path,
+        release_metadata: Optional[Dict[str, Any]] = None,
+    ) -> Tuple[Path, Dict[str, Any]]:
+        """Packages CAD models, 2D drawings, exports, and reports into a release ZIP archive
+        with cryptographic SHA-256 checksums recorded in an automated MANIFEST.json.
+
+        Args:
+            bundle_name: Name prefix for the release package (e.g., 'ACTUATOR-REV-B').
+            files_to_pack: List of file paths to bundle into the archive.
+            output_dir: Target directory for the archive.
+            release_metadata: Optional metadata dictionary (author, revision, timestamp).
+
+        Returns:
+            Tuple of (Path to .zip package, manifest dictionary).
+        """
+        target_dir = Path(output_dir).expanduser().resolve()
+        target_dir.mkdir(parents=True, exist_ok=True)
+        zip_path = target_dir / f"{bundle_name}.zip"
+
+        manifest: Dict[str, Any] = {
+            "bundle_name": bundle_name,
+            "created_at": datetime.datetime.now().isoformat(),
+            "metadata": release_metadata or {},
+            "file_count": 0,
+            "files": [],
+        }
+
+        valid_files: List[Path] = []
+        for f in files_to_pack:
+            p = Path(f).expanduser().resolve()
+            if p.exists() and p.is_file():
+                valid_files.append(p)
+            else:
+                logger.warning(f"Bundle file skipped (not found): {p}")
+
+        logger.info(f"Creating manufacturing release package '{zip_path.name}' with {len(valid_files)} files...")
+
+        with zipfile.ZipFile(zip_path, mode="w", compression=zipfile.ZIP_DEFLATED) as zf:
+            for file_path in valid_files:
+                sha256_hash = self.compute_sha256(file_path)
+                file_size = file_path.stat().st_size
+
+                zf.write(file_path, arcname=file_path.name)
+
+                manifest["files"].append({
+                    "name": file_path.name,
+                    "size_bytes": file_size,
+                    "sha256": sha256_hash,
+                })
+
+            manifest["file_count"] = len(manifest["files"])
+            manifest_json_str = json.dumps(manifest, indent=2)
+            zf.writestr("MANIFEST.json", manifest_json_str)
+
+        logger.info(f"Release package generated successfully: {zip_path} ({manifest['file_count']} files verified).")
+        return zip_path, manifest

@@ -414,6 +414,159 @@ class InventorAutomationEngine:
             logger.error(f"Failed to generate stepped shaft: {e}")
             raise
 
+
+    def create_l_bracket(
+        self,
+        part_doc: Any,
+        leg1_length_cm: float,
+        leg2_length_cm: float,
+        width_cm: float,
+        thickness_cm: float,
+        material: Optional[str] = None,
+        color: Optional[str] = None,
+    ) -> Any:
+        """Generates a structural L-angle mounting bracket.
+
+        Args:
+            part_doc: Target PartDocument.
+            leg1_length_cm: Length of the first (horizontal) flange leg.
+            leg2_length_cm: Length of the second (vertical) flange leg.
+            width_cm: Extrusion width of the bracket.
+            thickness_cm: Material thickness of the angle profile.
+            material: Optional material name.
+            color: Optional color/appearance name.
+        """
+        if thickness_cm >= min(leg1_length_cm, leg2_length_cm):
+            raise ValueError("Thickness must be strictly less than both leg lengths.")
+
+        try:
+            logger.info(
+                f"Generating L-Bracket: Leg1={leg1_length_cm}cm, Leg2={leg2_length_cm}cm, "
+                f"Width={width_cm}cm, Thickness={thickness_cm}cm"
+            )
+            cd = part_doc.ComponentDefinition
+            xy_plane = cd.WorkPlanes.Item(3)
+            sketch = cd.Sketches.Add(xy_plane)
+
+            # 6 profile vertices forming L cross-section
+            v0 = self.tg.CreatePoint2d(0, 0)
+            v1 = self.tg.CreatePoint2d(leg1_length_cm, 0)
+            v2 = self.tg.CreatePoint2d(leg1_length_cm, thickness_cm)
+            v3 = self.tg.CreatePoint2d(thickness_cm, thickness_cm)
+            v4 = self.tg.CreatePoint2d(thickness_cm, leg2_length_cm)
+            v5 = self.tg.CreatePoint2d(0, leg2_length_cm)
+
+            vertices = [v0, v1, v2, v3, v4, v5]
+            for i in range(6):
+                sketch.SketchLines.AddByTwoPoints(vertices[i], vertices[(i + 1) % 6])
+
+            profile = sketch.Profiles.AddForSolid()
+            extrudes = cd.Features.ExtrudeFeatures
+
+            try:
+                join_op = constants.kJoinOperation
+                pos_dir = constants.kPositiveExtentDirection
+            except AttributeError:
+                join_op = 20481
+                pos_dir = 20993
+
+            ext_def = extrudes.CreateExtrudeDefinition(profile, join_op)
+            ext_def.SetDistanceExtent(width_cm, pos_dir)
+            extrusion = extrudes.Add(ext_def)
+
+            if material:
+                self.apply_material(part_doc, material)
+            if color:
+                self.apply_color(part_doc, color)
+
+            logger.info("L-Bracket feature created successfully.")
+            return extrusion
+        except Exception as e:
+            logger.error(f"Failed to generate L-Bracket: {e}")
+            raise
+
+    def create_circular_flange(
+        self,
+        part_doc: Any,
+        outer_diameter_cm: float,
+        inner_diameter_cm: float,
+        thickness_cm: float,
+        pcd_cm: float,
+        bolt_count: int = 4,
+        bolt_hole_diameter_cm: float = 0.5,
+        material: Optional[str] = None,
+        color: Optional[str] = None,
+    ) -> Any:
+        """Generates a circular mounting flange with center bore and Pitch Circle Diameter (PCD) bolt holes.
+
+        Args:
+            part_doc: Target PartDocument.
+            outer_diameter_cm: Outside diameter of the flange disk.
+            inner_diameter_cm: Center bore / passage diameter (0 for solid blind flange).
+            thickness_cm: Flange disk thickness.
+            pcd_cm: Pitch circle diameter on which bolt holes are distributed.
+            bolt_count: Number of equidistant bolt holes.
+            bolt_hole_diameter_cm: Diameter of each bolt clearance hole.
+            material: Optional material.
+            color: Optional color.
+        """
+        if inner_diameter_cm >= outer_diameter_cm:
+            raise ValueError("Inner bore diameter must be less than outer diameter.")
+        if pcd_cm >= outer_diameter_cm or pcd_cm <= inner_diameter_cm:
+            raise ValueError("PCD bolt circle must lie between inner and outer diameters.")
+
+        try:
+            logger.info(
+                f"Generating Circular Flange: OD={outer_diameter_cm}cm, ID={inner_diameter_cm}cm, "
+                f"Thick={thickness_cm}cm, PCD={pcd_cm}cm, BoltHoles={bolt_count}x{bolt_hole_diameter_cm}cm"
+            )
+            cd = part_doc.ComponentDefinition
+            xy_plane = cd.WorkPlanes.Item(3)
+            sketch = cd.Sketches.Add(xy_plane)
+
+            origin = self.tg.CreatePoint2d(0, 0)
+            # Outer diameter
+            sketch.SketchCircles.AddByCenterRadius(origin, outer_diameter_cm / 2.0)
+
+            # Center bore if through-hole requested
+            if inner_diameter_cm > 0:
+                sketch.SketchCircles.AddByCenterRadius(origin, inner_diameter_cm / 2.0)
+
+            # Circular pattern bolt holes
+            pcd_radius = pcd_cm / 2.0
+            hole_radius = bolt_hole_diameter_cm / 2.0
+            if bolt_count > 0:
+                for i in range(bolt_count):
+                    angle = (2.0 * math.pi * i) / bolt_count
+                    bx = pcd_radius * math.cos(angle)
+                    by = pcd_radius * math.sin(angle)
+                    sketch.SketchCircles.AddByCenterRadius(self.tg.CreatePoint2d(bx, by), hole_radius)
+
+            profile = sketch.Profiles.AddForSolid()
+            extrudes = cd.Features.ExtrudeFeatures
+
+            try:
+                join_op = constants.kJoinOperation
+                pos_dir = constants.kPositiveExtentDirection
+            except AttributeError:
+                join_op = 20481
+                pos_dir = 20993
+
+            ext_def = extrudes.CreateExtrudeDefinition(profile, join_op)
+            ext_def.SetDistanceExtent(thickness_cm, pos_dir)
+            extrusion = extrudes.Add(ext_def)
+
+            if material:
+                self.apply_material(part_doc, material)
+            if color:
+                self.apply_color(part_doc, color)
+
+            logger.info("Circular flange feature created successfully.")
+            return extrusion
+        except Exception as e:
+            logger.error(f"Failed to generate circular flange: {e}")
+            raise
+
     def add_fillet(
         self,
         part_doc: Any,

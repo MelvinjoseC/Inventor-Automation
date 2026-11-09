@@ -338,6 +338,82 @@ class InventorAutomationEngine:
             logger.error(f"Failed to generate hex fastener: {e}")
             raise
 
+
+    def create_stepped_shaft(
+        self,
+        part_doc: Any,
+        steps: Any,
+        material: Optional[str] = None,
+        color: Optional[str] = None,
+    ) -> Any:
+        """Generates a multi-step cylindrical shaft using a revolved profile.
+
+        Args:
+            part_doc: Target PartDocument.
+            steps: List of (diameter_cm, length_cm) tuples defining shaft stages from left to right.
+            material: Optional material name.
+            color: Optional appearance style.
+        """
+        if not steps:
+            raise ValueError("Steps list must contain at least one (diameter, length) tuple.")
+
+        try:
+            logger.info(f"Generating stepped shaft with {len(steps)} sections: {steps}")
+            cd = part_doc.ComponentDefinition
+            xy_plane = cd.WorkPlanes.Item(3)
+            sketch = cd.Sketches.Add(xy_plane)
+
+            # Draw axis line along the X axis
+            total_length = sum(length for _, length in steps)
+            p_start = self.tg.CreatePoint2d(0, 0)
+            p_end = self.tg.CreatePoint2d(total_length, 0)
+            axis_line = sketch.SketchLines.AddByTwoPoints(p_start, p_end)
+
+            # Build half-profile along top of axis
+            curr_x = 0.0
+            prev_pt = p_start
+
+            for dia, length in steps:
+                rad = dia / 2.0
+                pt_step_top = self.tg.CreatePoint2d(curr_x, rad)
+                sketch.SketchLines.AddByTwoPoints(prev_pt, pt_step_top)
+                curr_x += length
+                pt_run_end = self.tg.CreatePoint2d(curr_x, rad)
+                sketch.SketchLines.AddByTwoPoints(pt_step_top, pt_run_end)
+                prev_pt = pt_run_end
+
+            # Close profile down to axis end
+            sketch.SketchLines.AddByTwoPoints(prev_pt, p_end)
+
+            profile = sketch.Profiles.AddForSolid()
+            revolves = cd.Features.RevolveFeatures
+
+            try:
+                full_sweep = constants.kFullSweep
+                join_op = constants.kJoinOperation
+            except AttributeError:
+                full_sweep = 21761
+                join_op = 20481
+
+            rev_def = revolves.CreateRevolveDefinition(profile, axis_line, join_op)
+            try:
+                rev_def.SetFullSweep()
+            except Exception:
+                pass
+
+            revolve_feat = revolves.Add(rev_def)
+
+            if material:
+                self.apply_material(part_doc, material)
+            if color:
+                self.apply_color(part_doc, color)
+
+            logger.info("Stepped shaft created successfully.")
+            return revolve_feat
+        except Exception as e:
+            logger.error(f"Failed to generate stepped shaft: {e}")
+            raise
+
     def add_fillet(
         self,
         part_doc: Any,

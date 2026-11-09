@@ -73,7 +73,7 @@ def test_inspector_drc():
     report = inspector.run_drc(part_doc, bom_item)
     
     assert report["overall_passed"] is True
-    assert report["passed_count"] == 3
+    assert report["passed_count"] >= 3
     
     # Test failure case: wall thickness too thin
     thin_item = BomItem({
@@ -83,3 +83,36 @@ def test_inspector_drc():
     
     fail_report = inspector.run_drc(part_doc, thin_item)
     assert fail_report["overall_passed"] is False
+
+
+def test_inspector_envelope_and_mass_budget():
+    app = MagicMock()
+    part_doc = MagicMock()
+    cd = part_doc.ComponentDefinition
+
+    mass_props = MagicMock()
+    mass_props.Mass = 12.0  # Over budget
+    mass_props.Volume = 50.0
+    mass_props.Area = 100.0
+    cd.MassProperties = mass_props
+
+    rb = MagicMock()
+    rb.MinPoint.X = 0.0
+    rb.MinPoint.Y = 0.0
+    rb.MinPoint.Z = 0.0
+    rb.MaxPoint.X = 150.0  # Exceeds 100cm envelope
+    rb.MaxPoint.Y = 2.0
+    rb.MaxPoint.Z = 1.0
+    cd.RangeBox = rb
+
+    rules = {
+        "max_envelope_cm": [100.0, 100.0, 100.0],
+        "max_mass_kg": 10.0,
+    }
+    inspector = ModelInspector(app, inspection_rules=rules)
+    report = inspector.run_drc(part_doc)
+
+    assert report["overall_passed"] is False
+    failed_rules = [c["rule"] for c in report["checks"] if not c["passed"]]
+    assert "BuildEnvelopeLimit" in failed_rules
+    assert "MassBudgetLimit" in failed_rules

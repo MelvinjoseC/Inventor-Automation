@@ -105,7 +105,7 @@ class ModelInspector:
         if bom_item:
             min_wall_mm = float(self.rules.get("min_wall_thickness_mm", 1.0))
             part_thickness_mm = getattr(bom_item, "thickness_cm", 0.0) * 10.0
-            
+
             if part_thickness_mm > 0:
                 wall_check = part_thickness_mm >= min_wall_mm
                 checks.append({
@@ -115,6 +115,60 @@ class ModelInspector:
                 })
                 if not wall_check:
                     overall_pass = False
+
+            # 4. Hole-to-Edge Clearance Check
+            min_hole_edge_mm = float(self.rules.get("min_hole_edge_dist_mm", 2.0))
+            margin_x = getattr(bom_item, "hole_margin_x_cm", None)
+            margin_y = getattr(bom_item, "hole_margin_y_cm", None)
+            hole_dia = getattr(bom_item, "hole_diameter_cm", None)
+            if margin_x is not None or margin_y is not None:
+                eff_margin_x = (margin_x * 10.0) if margin_x is not None else 100.0
+                eff_margin_y = (margin_y * 10.0) if margin_y is not None else 100.0
+                edge_clearance = min(eff_margin_x, eff_margin_y)
+                if hole_dia:
+                    edge_clearance -= (hole_dia * 5.0)  # subtract radius
+                edge_clearance = max(0.0, edge_clearance)
+                hole_edge_check = edge_clearance >= min_hole_edge_mm
+                checks.append({
+                    "rule": "MinHoleEdgeDistance",
+                    "passed": hole_edge_check,
+                    "details": f"Clearance = {edge_clearance:.2f} mm (min allowed {min_hole_edge_mm} mm)",
+                })
+                if not hole_edge_check:
+                    overall_pass = False
+
+        # 5. Machine Build Envelope Check
+        max_envelope_cm = self.rules.get("max_envelope_cm", [100.0, 100.0, 100.0])
+        env_x, env_y, env_z = max_envelope_cm[0], max_envelope_cm[1], max_envelope_cm[2]
+        envelope_check = (bb["dx"] <= env_x and bb["dy"] <= env_y and bb["dz"] <= env_z)
+        checks.append({
+            "rule": "BuildEnvelopeLimit",
+            "passed": envelope_check,
+            "details": f"Bounds {bb['dx']}x{bb['dy']}x{bb['dz']} cm (max {env_x}x{env_y}x{env_z} cm)",
+        })
+        if not envelope_check:
+            overall_pass = False
+
+        # 6. Mass Budget Check (if configured)
+        max_mass_kg = self.rules.get("max_mass_kg")
+        if max_mass_kg is not None:
+            mass_budget_check = props["mass_kg"] <= float(max_mass_kg)
+            checks.append({
+                "rule": "MassBudgetLimit",
+                "passed": mass_budget_check,
+                "details": f"Mass = {props['mass_kg']:.3f} kg (budget {max_mass_kg} kg)",
+            })
+            if not mass_budget_check:
+                overall_pass = False
+
+        # 7. Surface Area-to-Volume Ratio
+        if props["volume_cm3"] > 0:
+            sa_v_ratio = round(props["surface_area_cm2"] / props["volume_cm3"], 2)
+            checks.append({
+                "rule": "SurfaceToVolumeRatio",
+                "passed": True,
+                "details": f"S/V ratio = {sa_v_ratio} cm⁻¹",
+            })
 
         drc_summary = {
             "overall_passed": overall_pass,

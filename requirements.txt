@@ -2,6 +2,9 @@
 # Windows COM interface mapping libraries (only on Windows platform)
 pywin32>=306; sys_platform == "win32"
 
+# Data serialisation
+pyyaml>=6.0.0
+
 # Test & Coverage libraries
 pytest>=8.0.0
 pytest-mock>=3.12.0

@@ -15,7 +15,7 @@ logger = logging.getLogger("InventorAutomation.BomProcessor")
 class BomItem:
     """Represents a validated Bill of Materials (BOM) item representing a part to automate."""
 
-    VALID_PRIMITIVES = {"block", "cylinder", "plate_with_holes", "tube"}
+    VALID_PRIMITIVES = {"block", "cylinder", "plate_with_holes", "tube", "hex_fastener", "l_bracket", "circular_flange", "stepped_shaft"}
 
     def __init__(self, data: Dict[str, Any], defaults: Dict[str, Any]):
         self.raw_data = data
@@ -109,6 +109,55 @@ class BomItem:
                 self.corner_holes = bool(data.get("corner_holes", True))
                 self.center_hole = bool(data.get("center_hole", False))
 
+            elif self.part_type == "hex_fastener":
+                flats = float(data.get("across_flats", data.get("flats", defaults.get("across_flats", 1.8))))
+                head_h = float(data.get("head_height", defaults.get("head_height", 0.8)))
+                shank_d = float(data.get("shank_diameter", defaults.get("shank_diameter", 1.0)))
+                shank_l = float(data.get("shank_length", defaults.get("shank_length", 4.0)))
+                self.across_flats_cm = ConfigLoader.to_cm(flats, self.unit)
+                self.head_height_cm = ConfigLoader.to_cm(head_h, self.unit)
+                self.shank_diameter_cm = ConfigLoader.to_cm(shank_d, self.unit)
+                self.shank_length_cm = ConfigLoader.to_cm(shank_l, self.unit)
+                self.width_cm = self.across_flats_cm
+                self.height_cm = self.across_flats_cm
+                self.thickness_cm = self.head_height_cm + self.shank_length_cm
+
+            elif self.part_type == "l_bracket":
+                leg1 = float(data.get("leg1_length", defaults.get("leg1_length", 5.0)))
+                leg2 = float(data.get("leg2_length", defaults.get("leg2_length", 5.0)))
+                w = float(data.get("width", defaults.get("width", 3.0)))
+                t = float(data.get("thickness", defaults.get("thickness", 0.5)))
+                self.leg1_length_cm = ConfigLoader.to_cm(leg1, self.unit)
+                self.leg2_length_cm = ConfigLoader.to_cm(leg2, self.unit)
+                self.width_cm = ConfigLoader.to_cm(w, self.unit)
+                self.thickness_cm = ConfigLoader.to_cm(t, self.unit)
+                self.height_cm = self.leg2_length_cm
+
+            elif self.part_type == "circular_flange":
+                od = float(data.get("outer_diameter", defaults.get("outer_diameter", 10.0)))
+                id_val = float(data.get("inner_diameter", defaults.get("inner_diameter", 4.0)))
+                t = float(data.get("thickness", defaults.get("thickness", 1.0)))
+                pcd = float(data.get("pcd", defaults.get("pcd", 7.5)))
+                bc = int(data.get("bolt_count", defaults.get("bolt_count", 4)))
+                bhd = float(data.get("bolt_hole_diameter", defaults.get("bolt_hole_diameter", 0.8)))
+                self.outer_diameter_cm = ConfigLoader.to_cm(od, self.unit)
+                self.inner_diameter_cm = ConfigLoader.to_cm(id_val, self.unit)
+                self.thickness_cm = ConfigLoader.to_cm(t, self.unit)
+                self.pcd_cm = ConfigLoader.to_cm(pcd, self.unit)
+                self.bolt_count = bc
+                self.bolt_hole_diameter_cm = ConfigLoader.to_cm(bhd, self.unit)
+                self.width_cm = self.outer_diameter_cm
+                self.height_cm = self.outer_diameter_cm
+
+            elif self.part_type == "stepped_shaft":
+                raw_steps = data.get("steps", defaults.get("steps", [[2.0, 5.0], [1.5, 3.0]]))
+                self.steps = [(ConfigLoader.to_cm(s[0], self.unit), ConfigLoader.to_cm(s[1], self.unit)) for s in raw_steps]
+                max_d = max(s[0] for s in self.steps)
+                total_l = sum(s[1] for s in self.steps)
+                self.width_cm = max_d
+                self.height_cm = max_d
+                self.thickness_cm = total_l
+
             else:  # "block"
                 w = float(data.get("width", defaults.get("width", 2.0)))
                 h = float(data.get("height", defaults.get("height", 1.0)))
@@ -174,8 +223,10 @@ class BomProcessor:
             raw_items = self._parse_json(path)
         elif suffix in [".csv", ".txt"]:
             raw_items = self._parse_csv(path)
+        elif suffix in [".yaml", ".yml"]:
+            raw_items = self._parse_yaml(path)
         else:
-            raise ValueError(f"Unsupported BOM file format '{suffix}'. Use .json or .csv.")
+            raise ValueError(f"Unsupported BOM file format '{suffix}'. Use .json, .csv, or .yaml.")
 
         return self.parse_data(raw_items)
 
@@ -214,3 +265,21 @@ class BomProcessor:
                 if cleaned_row:
                     items.append(cleaned_row)
         return items
+
+    def _parse_yaml(self, path: Path) -> List[Dict[str, Any]]:
+        try:
+            import yaml
+        except ImportError:
+            raise ImportError("PyYAML is required for YAML BOM support. Run 'pip install pyyaml'.")
+
+        with open(path, "r", encoding="utf-8") as f:
+            data = yaml.safe_load(f)
+            if isinstance(data, list):
+                return data
+            elif isinstance(data, dict):
+                if "parts" in data and isinstance(data["parts"], list):
+                    return data["parts"]
+                if "components" in data and isinstance(data["components"], list):
+                    return data["components"]
+                return [data]
+            return []

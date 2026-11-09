@@ -1,0 +1,68 @@
+# Multi-primitive Machined Parts BOM (YAML specification)
+project: "Heavy Duty Actuator Subsystem"
+version: "2.2.0"
+author: "DevOps Automation"
+
+parts:
+  - part_number: "PL-BASE-01"
+    name: "Mounting Base Plate"
+    part_type: "plate_with_holes"
+    unit: "mm"
+    width: 200.0
+    height: 150.0
+    thickness: 15.0
+    hole_diameter: 12.0
+    hole_margin_x: 25.0
+    hole_margin_y: 25.0
+    corner_holes: true
+    center_hole: true
+    material: "Steel, Mild"
+    color: "Steel - Polished"
+    revision: "B"
+
+  - part_number: "FLG-COUPLING-02"
+    name: "Drive Flange Coupling"
+    part_type: "circular_flange"
+    unit: "mm"
+    outer_diameter: 120.0
+    inner_diameter: 35.0
+    thickness: 18.0
+    pcd: 90.0
+    bolt_count: 6
+    bolt_hole_diameter: 9.0
+    material: "Steel, Mild"
+    revision: "A"
+
+  - part_number: "SHF-STEP-03"
+    name: "Output Drive Shaft"
+    part_type: "stepped_shaft"
+    unit: "mm"
+    steps:
+      - [40.0, 50.0]
+      - [30.0, 80.0]
+      - [25.0, 40.0]
+    material: "Stainless Steel"
+    revision: "A"
+
+  - part_number: "BLT-HEX-M10"
+    name: "M10 Hexagon Head Bolt"
+    part_type: "hex_fastener"
+    unit: "mm"
+    across_flats: 16.0
+    head_height: 6.4
+    shank_diameter: 10.0
+    shank_length: 45.0
+    quantity: 6
+    material: "Steel, High Strength"
+    revision: "A"
+
+  - part_number: "BRK-CORNER-05"
+    name: "Structural Stiffener Bracket"
+    part_type: "l_bracket"
+    unit: "mm"
+    leg1_length: 60.0
+    leg2_length: 60.0
+    width: 40.0
+    thickness: 6.0
+    material: "Aluminum 6061"
+    revision: "A"

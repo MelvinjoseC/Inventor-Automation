@@ -1,4 +1,5 @@
 import logging
+import math
 from pathlib import Path
 from typing import Any, Optional
 from win32com.client import CastTo, constants
@@ -268,6 +269,73 @@ class InventorAutomationEngine:
             return extrusion
         except Exception as e:
             logger.error(f"Failed to generate tube: {e}")
+            raise
+
+
+    def create_hex_fastener(
+        self,
+        part_doc: Any,
+        across_flats_cm: float,
+        head_height_cm: float,
+        shank_diameter_cm: float,
+        shank_length_cm: float,
+        material: Optional[str] = None,
+        color: Optional[str] = None,
+    ) -> Any:
+        """Generates a standard hexagonal bolt fastener with hex head and cylindrical shank."""
+        try:
+            logger.info(
+                f"Generating Hex Fastener: Flats={across_flats_cm}cm, Head={head_height_cm}cm, "
+                f"Shank Dia={shank_diameter_cm}cm, Shank Len={shank_length_cm}cm"
+            )
+            cd = part_doc.ComponentDefinition
+            xy_plane = cd.WorkPlanes.Item(3)
+
+            # 1. Sketch hex head polygon profile
+            sketch1 = cd.Sketches.Add(xy_plane)
+            radius = (across_flats_cm / 2.0) / math.cos(math.radians(30))
+            pts = []
+            for i in range(6):
+                angle = math.radians(60 * i)
+                pts.append(self.tg.CreatePoint2d(radius * math.cos(angle), radius * math.sin(angle)))
+
+            for i in range(6):
+                sketch1.SketchLines.AddByTwoPoints(pts[i], pts[(i + 1) % 6])
+
+            profile1 = sketch1.Profiles.AddForSolid()
+            extrudes = cd.Features.ExtrudeFeatures
+
+            try:
+                join_op = constants.kJoinOperation
+                pos_dir = constants.kPositiveExtentDirection
+                neg_dir = constants.kNegativeExtentDirection
+            except AttributeError:
+                join_op = 20481
+                pos_dir = 20993
+                neg_dir = 20994
+
+            ext_def1 = extrudes.CreateExtrudeDefinition(profile1, join_op)
+            ext_def1.SetDistanceExtent(head_height_cm, pos_dir)
+            head_ext = extrudes.Add(ext_def1)
+
+            # 2. Sketch shank extending along negative Z
+            if shank_length_cm > 0:
+                sketch2 = cd.Sketches.Add(xy_plane)
+                sketch2.SketchCircles.AddByCenterRadius(self.tg.CreatePoint2d(0, 0), shank_diameter_cm / 2.0)
+                profile2 = sketch2.Profiles.AddForSolid()
+                ext_def2 = extrudes.CreateExtrudeDefinition(profile2, join_op)
+                ext_def2.SetDistanceExtent(shank_length_cm, neg_dir)
+                extrudes.Add(ext_def2)
+
+            if material:
+                self.apply_material(part_doc, material)
+            if color:
+                self.apply_color(part_doc, color)
+
+            logger.info("Hex fastener created successfully.")
+            return head_ext
+        except Exception as e:
+            logger.error(f"Failed to generate hex fastener: {e}")
             raise
 
     def add_fillet(
